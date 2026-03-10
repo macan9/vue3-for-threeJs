@@ -54,6 +54,7 @@
     .position-left{
         position: absolute;
         right: 0;
+		height: 100%;
     }
 }
 </style>

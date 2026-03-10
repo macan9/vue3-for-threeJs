@@ -4,7 +4,6 @@
             <div class="page-title">用户管理</div>
         </div>
        
-
         <div class="user-main">
             <div class="user-header">
                 <el-button size="small" type="success" @click="handleAdd()">Add</el-button>
@@ -26,7 +25,9 @@
                         <el-input v-model="search" size="small" placeholder="输入用户名过滤" />
                     </template>
                     <template #default="scope">
-                        <el-button size="small" @click="handleEdit(scope.$index, scope.row)">Edit</el-button>
+                        <el-button size="small" @click="handleEdit(scope.$index, scope.row)">
+							Edit
+						</el-button>
                         <el-button size="small" type="danger" @click="handleDelete(scope.$index, scope.row)">
                             Delete
                         </el-button>

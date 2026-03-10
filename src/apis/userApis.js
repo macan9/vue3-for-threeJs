@@ -3,32 +3,32 @@ import { globals_config } from '/public/config/globals_config'
 
 // 用户登录
 export const loginReq = async (data) => {
-	return await postApi('/api/users/login/', data)
+	return await postApi('/api/users/login', data)
 }
 
 // 用户注册
 export const registerReq = async (data) => {
-	return await postApi('/api/users/', data)
+	return await postApi('/api/users', data)
 }
 
 // 用户列表查询
 export const userListGet = async () => {
-	return await getApi('/api/users/')
+	return await getApi('/api/users')
 }
 
 // 个人信息查询
 export const userInfoGet = async (id) => {
-	return await getApi(`/api/v1/users/${id}/`)
+	return await getApi(`/api/users/${id}`)
 }
 
 // 个人信息修改
 export const userInfoPut = async (id, data) => {
-	return await putApi(`/api/users/${id}/`, data)
+	return await putApi(`/api/users/${id}`, data)
 }
 
 // 用户删除
 export const userDelete = async (id) => {
-	return await delApi(`/api/users/${id}/`)
+	return await delApi(`/api/users/${id}`)
 }
 
 // 用户登录日志

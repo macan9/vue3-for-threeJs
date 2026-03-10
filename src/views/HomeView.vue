@@ -112,7 +112,7 @@ export default {
       font-size: 18px;
       border-bottom: 1px solid #ccc;
       .page-title{
-        padding-left: 15px;
+        padding-left: 25px;
         font-weight: bold;
         color: rgb(90, 88, 88);
       }
@@ -121,9 +121,9 @@ export default {
         position: absolute;
         top: 0;
         left: -1px; /* 负 margin 值为正方形边长的一半 */
-        width: 8px; /* 正方形边长 */
+        width: 15px; /* 正方形边长 */
         height: 100%; /* 正方形边长 */
-        background-color: #ccc;
+        background-color: #a0cfff;
       }
     }
     
