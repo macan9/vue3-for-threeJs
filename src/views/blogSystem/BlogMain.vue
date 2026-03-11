@@ -1,22 +1,261 @@
 <template>
-    <div class="home-view-page BlogMain">
-        <div>梦里回到他的身旁</div>
-        <div>密语中风不在凉</div>
-        <div>永远都像初次见你那样</div>
-        <div>使我心荡漾</div>
-    </div>
+	<div class="home-view-page BlogMain">
+		<div class="home-view-title">
+			<div class="page-title">博客列表</div>
+		</div>
+
+		<div class="blog-main">
+			<div class="blog-header">
+				<el-button size="small" type="primary" @click="openCreate()">新增</el-button>
+				<el-button size="small" type="success" @click="getPostData()">刷新</el-button>
+				<el-input v-model="search" size="small" placeholder="输入标题过滤" style="max-width: 240px;" />
+			</div>
+
+			<el-skeleton :loading="loading" animated :rows="6">
+				<template #default>
+					<el-empty v-if="!filterTableData.length" description="暂无文章" />
+					<el-table v-else :data="filterTableData" style="width: 100%">
+						<el-table-column label="标题" prop="title" min-width="240">
+							<template #default="scope">
+								<div class="post-title" :title="scope.row.title || '-'">
+									{{ scope.row.title || '-' }}
+								</div>
+							</template>
+						</el-table-column>
+						<el-table-column label="作者" prop="author" width="160">
+							<template #default="scope">
+								{{ scope.row.author?.nickname || scope.row.author?.username || scope.row.author || '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column label="更新时间" prop="updatedAt" width="200">
+							<template #default="scope">
+								{{ formatTime(scope.row.updatedAt || scope.row.updateTime || scope.row.updated_time || scope.row.createdAt || scope.row.createTime) }}
+							</template>
+						</el-table-column>
+						<el-table-column label="摘要" prop="summary" min-width="280" show-overflow-tooltip>
+							<template #default="scope">
+								{{ scope.row.summary || scope.row.desc || scope.row.description || '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column align="right" width="180">
+							<template #default="scope">
+								<el-button size="small" @click="openEdit(scope.row)">编辑</el-button>
+								<el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+							</template>
+						</el-table-column>
+					</el-table>
+				</template>
+			</el-skeleton>
+		</div>
+
+		<el-dialog v-model="createDialogVisible" title="新增博客" width="640px">
+			<el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px">
+				<el-form-item label="标题" prop="title">
+					<el-input v-model="createForm.title" placeholder="请输入标题" />
+				</el-form-item>
+				<el-form-item label="摘要" prop="summary">
+					<el-input v-model="createForm.summary" placeholder="可选" />
+				</el-form-item>
+				<el-form-item label="内容" prop="content">
+					<el-input v-model="createForm.content" type="textarea" :rows="10" placeholder="请输入内容（支持 Markdown）" />
+				</el-form-item>
+			</el-form>
+			<template #footer>
+				<el-button @click="createDialogVisible = false">取消</el-button>
+				<el-button type="primary" :loading="creating" @click="submitCreate()">提交</el-button>
+			</template>
+		</el-dialog>
+
+		<el-dialog v-model="editDialogVisible" title="编辑博客" width="640px">
+			<el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="80px">
+				<el-form-item label="标题" prop="title">
+					<el-input v-model="editForm.title" placeholder="请输入标题" />
+				</el-form-item>
+				<el-form-item label="摘要" prop="summary">
+					<el-input v-model="editForm.summary" placeholder="可选" />
+				</el-form-item>
+				<el-form-item label="内容" prop="content">
+					<el-input v-model="editForm.content" type="textarea" :rows="10" placeholder="请输入内容（支持 Markdown）" />
+				</el-form-item>
+			</el-form>
+			<template #footer>
+				<el-button @click="editDialogVisible = false">取消</el-button>
+				<el-button type="primary" :loading="editing" @click="submitEdit()">保存</el-button>
+			</template>
+		</el-dialog>
+	</div>
 </template>
+
+<script setup>
+import { computed, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { postCreateReq, postDelete, postInfoPut, postListGet } from '@/apis/blogApis.js'
+
+const search = ref('')
+const loading = ref(false)
+const tableData = ref([])
+
+const createDialogVisible = ref(false)
+const creating = ref(false)
+const createFormRef = ref()
+const createForm = reactive({
+	title: '',
+	summary: '',
+	content: '',
+})
+const createRules = {
+	title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+}
+
+const editDialogVisible = ref(false)
+const editing = ref(false)
+const editId = ref('')
+const editFormRef = ref()
+const editForm = reactive({
+	title: '',
+	summary: '',
+	content: '',
+})
+const editRules = {
+	title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+}
+
+const filterTableData = computed(() => {
+	const keyword = search.value?.trim()?.toLowerCase()
+	if (!keyword) return tableData.value
+	return tableData.value.filter((row) => (row?.title || '').toLowerCase().includes(keyword))
+})
+
+const getRowId = (row) => row?.id ?? row?._id ?? row?.postId ?? row?.post_id ?? ''
+
+const formatTime = (val) => {
+	if (!val) return '-'
+	const d = new Date(val)
+	if (Number.isNaN(d.getTime())) return String(val)
+	const yyyy = d.getFullYear()
+	const mm = String(d.getMonth() + 1).padStart(2, '0')
+	const dd = String(d.getDate()).padStart(2, '0')
+	const hh = String(d.getHours()).padStart(2, '0')
+	const mi = String(d.getMinutes()).padStart(2, '0')
+	return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
+}
+
+const getPostData = async () => {
+	loading.value = true
+	try {
+		const res = await postListGet()
+		const payload = res?.data?.data ?? res?.data ?? res
+		if (Array.isArray(payload)) tableData.value = payload
+		else if (Array.isArray(payload?.list)) tableData.value = payload.list
+		else if (Array.isArray(payload?.rows)) tableData.value = payload.rows
+		else if (Array.isArray(payload?.data)) tableData.value = payload.data
+		else if (Array.isArray(payload?.data?.list)) tableData.value = payload.data.list
+		else if (Array.isArray(payload?.data?.rows)) tableData.value = payload.data.rows
+		else tableData.value = []
+	} catch (e) {
+		ElMessage.error('获取文章列表失败')
+		tableData.value = []
+	} finally {
+		loading.value = false
+	}
+}
+
+const openCreate = () => {
+	createDialogVisible.value = true
+	createForm.title = ''
+	createForm.summary = ''
+	createForm.content = ''
+	createFormRef.value?.clearValidate?.()
+}
+
+const submitCreate = async () => {
+	if (creating.value) return
+	const ok = await createFormRef.value?.validate?.().catch(() => false)
+	if (!ok) return
+	creating.value = true
+	try {
+		await postCreateReq({ ...createForm })
+		ElMessage.success('新增成功')
+		createDialogVisible.value = false
+		getPostData()
+	} catch (e) {
+		ElMessage.error('新增失败')
+	} finally {
+		creating.value = false
+	}
+}
+
+const openEdit = (row) => {
+	const id = getRowId(row)
+	if (!id) {
+		ElMessage.warning('未找到文章 id')
+		return
+	}
+	editId.value = id
+	editDialogVisible.value = true
+	editForm.title = row?.title || ''
+	editForm.summary = row?.summary || row?.desc || row?.description || ''
+	editForm.content = row?.content || row?.markdown || row?.md || ''
+	editFormRef.value?.clearValidate?.()
+}
+
+const submitEdit = async () => {
+	if (editing.value) return
+	const ok = await editFormRef.value?.validate?.().catch(() => false)
+	if (!ok) return
+	if (!editId.value) {
+		ElMessage.warning('未找到文章 id')
+		return
+	}
+	editing.value = true
+	try {
+		await postInfoPut(editId.value, { ...editForm })
+		ElMessage.success('保存成功')
+		editDialogVisible.value = false
+		getPostData()
+	} catch (e) {
+		ElMessage.error('保存失败')
+	} finally {
+		editing.value = false
+	}
+}
+
+const handleDelete = async (row) => {
+	const id = getRowId(row)
+	if (!id) {
+		ElMessage.warning('未找到文章 id')
+		return
+	}
+	ElMessageBox.confirm('确定要删除该文章吗？')
+		.then(async () => {
+			await postDelete(id)
+			ElMessage.success('删除成功')
+			getPostData()
+		})
+		.catch(() => {})
+}
+
+getPostData()
+</script>
 <style lang="scss">
 .BlogMain{
-    padding: 100px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    font-size: 30px;
-    >div{
-        width: 100%;
-        margin: 20px;
-    }
+	padding: 10px;
+	.blog-main{
+		padding: 15px;
+	}
+	.blog-header{
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding-left: 15px;
+		height: 40px;
+		margin-bottom: 10px;
+	}
+	.post-title{
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 }
 </style>
