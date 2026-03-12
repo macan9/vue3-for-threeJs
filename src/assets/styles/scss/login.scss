@@ -1,82 +1,97 @@
+.login-page1 {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top, #1f2933, #020617);
 
+    .box {
+        width: 420px;
+        padding: 36px 40px 28px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.9);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
 
-.login-page1{
-  
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    font-family: sans-serif;
-    background: url("/public/img/login/bg-01.jpg");
-    opacity: 0.92;
-    border-radius: 5px;
-    .box{
-        width: 380px;
-        padding: 40px;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #191919;
+    .login-title {
+        margin: 0;
         text-align: center;
+        font-size: 24px;
+        font-weight: 600;
+        color: #f9fafb;
     }
-    
-    .box h1{
-        color: white;
-        font-family: "Times New Roman";
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        font-weight: 500;
-    }
-    
-    .box input[type = "text"], .box input[type = "password"]{
-        border: 0;
-        background: none;
-        display: block;
-        margin: 20px auto;
+
+    .login-subtitle {
+        margin: 8px 0 24px;
         text-align: center;
-        border: 2px solid #3498db;
-        padding: 14px 10px;
-        width: 200px;
-        outline: none;
-        color: white;
+        font-size: 13px;
+        color: #9ca3af;
+    }
+
+    .form-item {
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .form-item input {
+        width: 220px; // 三个输入框统一宽度
+        flex: 0 0 220px;
+        height: 40px; // 统一输入框高度
+        padding: 8px 12px;
         border-radius: 24px;
+        border: 2px solid #3498db;
+        background: none;
+        color: #e5e7eb;
+        outline: none;
+        font-size: 14px;
+        text-align: center;
+        box-sizing: border-box;
         transition: 0.25s;
     }
-    
-    .box input[type = "text"]:focus, .box input[type = "password"]:focus{
-        width: 280px;
+
+    .form-item input::placeholder {
+        color: #6b7280;
+    }
+
+    .form-item input:focus {
         border-color: #2ecc71;
     }
-    
-    .box input[type = "submit"]{
-        border: 0;
-        background: none;
-        display: block;
-        margin: 20px auto;
+
+    .form-label {
+        display: inline-block;
+        width: 70px;
+        font-size: 14px;
+        color: #e5e7eb;
+        text-align: right;
+    }
+
+    .captcha-img {
+        height: 44px; // 比输入框高度放大约 20%
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid #4b5563;
+        background: #111827;
+        margin: 10px 0 0 35px;
+    }
+
+    .captcha-row {
+        margin-top: -8px; // 让图片更贴近上方输入框
+    }
+    .button-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+    }
+
+    .login-tip {
+        margin-top: 16px;
         text-align: center;
-        border: 2px solid #2ecc71;
-        padding: 14px 40px;
-        outline: none;
-        color: white;
-        border-radius: 24px;
-        transition: 0.25s;
-        cursor: pointer;
-    }
-    
-    .box input[type = "submit"]:hover{
-        background: #2ecc71;
-    }
-    
-    .box p{
-        color: grey;
-        font-family: arial,sans-serif;
-        font-size: 13px;
-    }
-    
-    
-    .box p:hover{
-        text-decoration: underline;
-        cursor: pointer;
+        font-size: 12px;
+        color: #6b7280;
     }
 }
-

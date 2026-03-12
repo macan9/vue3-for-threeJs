@@ -24,12 +24,12 @@
 						</el-table-column>
 						<el-table-column label="作者" prop="author" width="160">
 							<template #default="scope">
-								{{ scope.row.author?.nickname || scope.row.author?.username || scope.row.author || '-' }}
+								{{ scope.row.author_name || scope.row.author?.nickname || scope.row.author?.username || scope.row.author || '-' }}
 							</template>
 						</el-table-column>
-						<el-table-column label="更新时间" prop="updatedAt" width="200">
+						<el-table-column label="创建时间" prop="created_at" width="200">
 							<template #default="scope">
-								{{ formatTime(scope.row.updatedAt || scope.row.updateTime || scope.row.updated_time || scope.row.createdAt || scope.row.createTime) }}
+								{{ formatTime(scope.row.created_at || scope.row.createdAt || scope.row.createTime || scope.row.updatedAt || scope.row.updateTime || scope.row.updated_time) }}
 							</template>
 						</el-table-column>
 						<el-table-column label="摘要" prop="summary" min-width="280" show-overflow-tooltip>

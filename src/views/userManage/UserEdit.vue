@@ -38,9 +38,9 @@
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button type="primary" round @click="closeDialog" >Cancel</el-button>
+        <el-button type="primary" round @click="closeDialog" >取消</el-button>
         <el-button type="success" round @click="registerUser(userRuleFormRef)" >
-            Modification
+            确认修改
         </el-button>
       </span>
     </template>
@@ -79,13 +79,16 @@
   }
 
   const handleClose = (done) => {
-    ElMessageBox.confirm('Are you sure to close this dialog?')
+    ElMessageBox.confirm('确定要关闭编辑窗口吗？', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
       .then(() => {
-        
         done()
       })
       .catch(() => {
-        // catch error
+        // 用户取消关闭
       })
   }
 
@@ -99,15 +102,8 @@
 
   const userRules = reactive({
     username: [
-      { required: true, message: 'Please input Activity name', trigger: 'blur' },
-      { min: 2, max: 5, message: 'Length should be 3 to 5', trigger: 'blur' },
-    ],
-    password: [
-      {
-        required: true,
-        message: 'Please select Activity zone',
-        trigger: 'change',
-      },
+      { required: true, message: '请输入用户名', trigger: 'blur' },
+      { min: 2, max: 16, message: '用户名长度应为 2-16 个字符', trigger: 'blur' },
     ],
   })
 

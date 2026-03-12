@@ -6,6 +6,11 @@ export const loginReq = async (data) => {
 	return await postApi('/api/users/login', data)
 }
 
+// 图形验证码获取
+export const getCaptcha = async () => {
+	return await getApi('/api/captcha')
+}
+
 // 用户注册
 export const registerReq = async (data) => {
 	return await postApi('/api/users', data)

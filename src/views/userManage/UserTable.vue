@@ -6,19 +6,19 @@
        
         <div class="user-main">
             <div class="user-header">
-                <el-button size="small" type="success" @click="handleAdd()">Add</el-button>
-                <el-button size="small" type="success" @click="getUserData()">UpDate</el-button>
+                <el-button size="small" type="success" @click="handleAdd()">新增用户</el-button>
+                <el-button size="small" type="primary" @click="getUserData()">刷新列表</el-button>
             </div>
             <el-table :data="filterTableData" style="width: 100%">
                 <el-table-column label="用户名" prop="username" />
                 <el-table-column label="昵称" prop="nickname" />
                 <el-table-column label="邮箱" prop="email" width="200" />
                 <el-table-column label="手机号" prop="mobile" />
-                <el-table-column label="性别" prop="sex" width="80">
+                <!-- <el-table-column label="性别" prop="sex" width="80">
                     <template #default="scope">
                         {{scope.row.sex?"女":"男"}}
                     </template>
-                </el-table-column>
+                </el-table-column> -->
                 <el-table-column label="个性签名" prop="description" />
                 <el-table-column align="right" width="200" >
                     <template #header>
@@ -26,10 +26,10 @@
                     </template>
                     <template #default="scope">
                         <el-button size="small" @click="handleEdit(scope.$index, scope.row)">
-							Edit
+							编辑
 						</el-button>
                         <el-button size="small" type="danger" @click="handleDelete(scope.$index, scope.row)">
-                            Delete
+                            删除
                         </el-button>
                     </template>
                 </el-table-column>
@@ -110,7 +110,7 @@
 </script>
 <style lang="scss">
 .user-table{
-    // padding: 10px;
+    padding: 10px;
     .user-main{
         padding: 15px;
     }

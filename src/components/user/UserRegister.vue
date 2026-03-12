@@ -1,43 +1,62 @@
 <template>
     <el-dialog
-    v-model="visible.attr"
-    title="用户注册"
-    width="45%"
-    :before-close="handleClose"
-    class="user-register-style"
-  >
-    <el-form :model="userForm" ref="userRuleFormRef" :rules="userRules" label-width="120px">
-      <el-form-item label="用户名" prop="username">
-        <el-input v-model="userForm.username" style="width: 200px"/>
-      </el-form-item>
-      <el-form-item label="用户密码" prop="password">
-        <el-input type="password" v-model="userForm.password" style="width: 200px" />
-      </el-form-item>
-      <el-form-item label="确认密码" prop="password">
-        <el-input type="password" v-model="userForm.check_password" style="width: 200px" />
-      </el-form-item>
-      <el-form-item label="用户权限" prop="role">
-        <el-select v-model="userForm.role" placeholder="请选择用户类型">
-          <el-option v-for="item in user_authority" :label="item.label" :value="item.value" :key="item.value"/>
-        </el-select>
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <span class="dialog-footer">
-        <el-button type="primary" round @click="closeDialog" >Cancel</el-button>
-        <el-button type="success" round @click="registerUser(userRuleFormRef)" >
-          Register
-        </el-button>
-      </span>
-    </template>
-  </el-dialog>
+      v-model="visible.attr"
+      title="用户注册"
+      width="480px"
+      :before-close="handleClose"
+      class="user-register-style"
+    >
+      <el-form :model="userForm" ref="userRuleFormRef" :rules="userRules" label-width="100px">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="userForm.username" placeholder="请输入用户名" />
+        </el-form-item>
+        <el-form-item label="昵称" prop="nickname">
+          <el-input v-model="userForm.nickname" placeholder="请输入昵称（可选）" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="userForm.phone" placeholder="请输入手机号（可选）" />
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input type="password" v-model="userForm.password" placeholder="请输入密码" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="check_password">
+          <el-input type="password" v-model="userForm.check_password" placeholder="请再次输入密码" />
+        </el-form-item>
+        <!-- <el-form-item label="用户权限" prop="role">
+          <el-select v-model="userForm.role" placeholder="请选择用户类型">
+            <el-option v-for="item in user_authority" :label="item.label" :value="item.value" :key="item.value"/>
+          </el-select>
+        </el-form-item> -->
+        <el-form-item label="图形验证码" prop="captcha">
+          <div class="captcha-row">
+            <el-input v-model="userForm.captcha" placeholder="请输入验证码" />
+            <img
+              v-if="captchaImg"
+              :src="captchaImg"
+              alt="验证码"
+              class="captcha-img"
+              @click="loadCaptcha"
+            />
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="closeDialog">取消</el-button>
+          <el-button type="success" @click="registerUser(userRuleFormRef)">
+            确认注册
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
 </template>
 
 <script lang="js" setup>
-  import { defineProps, toRef, ref,reactive} from 'vue'
+  import { defineProps, toRef, ref, reactive, onMounted } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { registerReq } from '@/apis/userApis.js'
-  import { user_authority } from '@/common/plugins/user_config.js'
+  // import { user_authority } from '@/common/plugins/user_config.js'
+  import { globals_config } from '/public/config/globals_config'
   
   
 
@@ -53,11 +72,21 @@
 
   const userForm = reactive({
     username: '',
+    nickname: '',
+    phone: '',
     password: '',
     check_password: '',
     role: '',
     description: '',
+    captcha: '',
   })
+
+  const captchaImg = ref('')
+
+  const loadCaptcha = () => {
+    // 直接用图片地址，添加时间戳防缓存
+    captchaImg.value = `${globals_config.host_service}api/captcha?ts=${Date.now()}`
+  }
   
   const registerUser = async  (formEl) => {
     console.log(formEl,'formEl')
@@ -81,12 +110,16 @@
   }
 
   const handleClose = (done) => {
-    ElMessageBox.confirm('Are you sure to close this dialog?')
+    ElMessageBox.confirm('确定要关闭注册窗口吗？', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
       .then(() => {
         done()
       })
       .catch(() => {
-        // catch error
+        // 用户点击取消，不做处理
       })
   }
 
@@ -99,16 +132,35 @@
   const userRuleFormRef = ref(null)
   const userRules = reactive({
     username: [
-      { required: true, message: 'Please input Activity name', trigger: 'blur' },
-      { min: 2, max: 5, message: 'Length should be 3 to 5', trigger: 'blur' },
+      { required: true, message: '请输入用户名', trigger: 'blur' },
+      { min: 2, max: 16, message: '用户名长度应为 2-16 个字符', trigger: 'blur' },
     ],
+    // 昵称、手机号为非必填，这里暂不做强校验；如需校验可按需补充
     password: [
       {
         required: true,
-        message: 'Please select Activity zone',
-        trigger: 'change',
+        message: '请输入密码',
+        trigger: 'blur',
       },
     ],
+    check_password: [
+      {
+        required: true,
+        message: '请再次输入密码',
+        trigger: 'blur',
+      },
+    ],
+    captcha: [
+      {
+        required: true,
+        message: '请输入图形验证码',
+        trigger: 'blur',
+      },
+    ],
+  })
+
+  onMounted(() => {
+    loadCaptcha()
   })
 
   
@@ -120,15 +172,36 @@
   margin-right: 10px;
 }
 .user-register-style{
-    margin-top: 30vh;
-    border-radius: 5px;
-    min-width: 380px;
-  .el-form{
-    width: 380px;
-    margin: 0 auto;
+  margin-top: 30vh;
+  border-radius: 8px;
+
+  .el-dialog__body {
+    padding: 12px 0 20px;
   }
-  .el-input{
-    width: 200px;
+
+  .el-form {
+    width: 100%;
+    padding: 0 50px; // 左右各保留至少 50px 留白
+  }
+
+  .el-form-item__label {
+    text-align: right;
+    padding-right: 8px;
+    color: #374151;
+    font-size: 14px;
+  }
+
+  .captcha-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .captcha-img {
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #d1d5db;
   }
 }
 </style>

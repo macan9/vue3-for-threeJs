@@ -9,7 +9,8 @@ import { loginOut } from '@/common/plugins/user_manage_methods'
 //使用axios下面的create([config])方法创建axios实例，其中config参数为axios最基本的配置信息。
 const api = axios.create({
    baseURL: globals_config.host_service,
-	timeout: 2000   //请求超时设置，单位ms
+	timeout: 2000,   //请求超时设置，单位ms
+   withCredentials: true, // 携带 Cookie，保证验证码和登录在同一会话
 })
 
 // 请求相关处理 请求拦截 在请求拦截中可以补充请求相关的配置
@@ -20,8 +21,10 @@ api.interceptors.request.use(config => {
    // gitee baseurl 修改
    const isGiteeUrl = config.url.startsWith('/gitee');
    if(isGiteeUrl){
+      // gitee 为第三方域名，不能携带本地 Cookie，否则会触发跨域 + withCredentials 限制
       config.baseURL = 'https://gitee.com';
       config.url = config.url.replace('/gitee','')
+      config.withCredentials = false;
    }else{
       const userInfo_str = localStorage.getItem('userInfo')
       if(userInfo_str){
