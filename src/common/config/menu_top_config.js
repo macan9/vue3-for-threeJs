@@ -5,6 +5,11 @@ export const menu_top_config = [
         path: "/blogMain",
         icon: "House"
     },{
+        label: "博客管理",
+        value: "4",
+        path: "/blogMain",
+        icon: "OfficeBuilding"
+    },{
         label: "二维地图",
         value: "2",
         path: "/blogMain",
@@ -12,11 +17,6 @@ export const menu_top_config = [
     },{
         label: "三维场景",
         value: "3",
-        path: "/blogMain",
-        icon: "OfficeBuilding"
-    },{
-        label: "博客管理",
-        value: "4",
         path: "/blogMain",
         icon: "OfficeBuilding"
     },{

@@ -24,17 +24,22 @@
 						</el-table-column>
 						<el-table-column label="作者" prop="author" width="160">
 							<template #default="scope">
-								{{ scope.row.author_name || scope.row.author?.nickname || scope.row.author?.username || scope.row.author || '-' }}
+								{{ scope.row.author_name || '-' }}
 							</template>
 						</el-table-column>
 						<el-table-column label="创建时间" prop="created_at" width="200">
 							<template #default="scope">
-								{{ formatTime(scope.row.created_at || scope.row.createdAt || scope.row.createTime || scope.row.updatedAt || scope.row.updateTime || scope.row.updated_time) }}
+								{{ formatTime(scope.row.updated_at) }}
 							</template>
 						</el-table-column>
-						<el-table-column label="摘要" prop="summary" min-width="280" show-overflow-tooltip>
+						<el-table-column label="摘要" prop="summary" min-width="220" show-overflow-tooltip>
 							<template #default="scope">
-								{{ scope.row.summary || scope.row.desc || scope.row.description || '-' }}
+								{{ scope.row.summary || '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column label="内容" prop="content" min-width="280" show-overflow-tooltip>
+							<template #default="scope">
+								{{ scope.row.content || '-' }}
 							</template>
 						</el-table-column>
 						<el-table-column align="right" width="180">
@@ -90,6 +95,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { postCreateReq, postDelete, postInfoPut, postListGet } from '@/apis/blogApis.js'
+import { useRoute } from 'vue-router';
 
 const search = ref('')
 const loading = ref(false)
@@ -140,19 +146,22 @@ const formatTime = (val) => {
 	return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
 }
 
+// 判断路由参数 myBlog 是否为 '1'
+const route = useRoute()
+const isMyBlog = computed(() => route.query.myBlog === '1')
+console.log('isMyBlog', isMyBlog.value)
+
 const getPostData = async () => {
 	loading.value = true
 	try {
-		const res = await postListGet()
-		const payload = res?.data?.data ?? res?.data ?? res
-		if (Array.isArray(payload)) tableData.value = payload
-		else if (Array.isArray(payload?.list)) tableData.value = payload.list
-		else if (Array.isArray(payload?.rows)) tableData.value = payload.rows
-		else if (Array.isArray(payload?.data)) tableData.value = payload.data
-		else if (Array.isArray(payload?.data?.list)) tableData.value = payload.data.list
-		else if (Array.isArray(payload?.data?.rows)) tableData.value = payload.data.rows
-		else tableData.value = []
+		const userInfo = localStorage.getItem('userInfo');
+		const userId = JSON.parse(userInfo)?.user?.id
+		const query = isMyBlog.value ? { userId } : {}
+		const { data } = await postListGet(query)
+		tableData.value = Array.isArray(data.data) ? data.data : []
+		
 	} catch (e) {
+		console.error('获取文章列表失败', e)
 		ElMessage.error('获取文章列表失败')
 		tableData.value = []
 	} finally {

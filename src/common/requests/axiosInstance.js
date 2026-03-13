@@ -28,6 +28,7 @@ api.interceptors.request.use(config => {
    }else{
       const userInfo_str = localStorage.getItem('userInfo')
       if(userInfo_str){
+         // console.log(userInfo_str,'userInfo_str')
          const userInfo = JSON.parse(userInfo_str) 
          const token = userInfo.token; // 替换为你的实际 Token
          config.headers.Authorization = `JWT ${token}`;
