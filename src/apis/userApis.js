@@ -8,7 +8,7 @@ export const loginReq = async (data) => {
 
 // 图形验证码获取
 export const getCaptcha = async () => {
-	return await getApi('/api/captcha')
+	return await getApi('/api/captcha/json')
 }
 
 // 用户注册

@@ -54,9 +54,8 @@
 <script lang="js" setup>
   import { defineProps, toRef, ref, reactive, onMounted } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import { registerReq } from '@/apis/userApis.js'
+  import { registerReq, getCaptcha } from '@/apis/userApis.js'
   // import { user_authority } from '@/common/plugins/user_config.js'
-  import { globals_config } from '/public/config/globals_config'
   
   
 
@@ -79,13 +78,21 @@
     role: '',
     description: '',
     captcha: '',
+    captchaId: '',
   })
 
   const captchaImg = ref('')
 
-  const loadCaptcha = () => {
+  const loadCaptcha = async () => {
     // 直接用图片地址，添加时间戳防缓存
-    captchaImg.value = `${globals_config.host_service}api/captcha?ts=${Date.now()}`
+    const res = await getCaptcha()
+    const payload = (res && res.data) ? res.data : res
+    const nextCaptchaId = payload && payload.captchaId ? payload.captchaId : ''
+    const svg = payload && payload.svg ? payload.svg : ''
+
+    userForm.captchaId = nextCaptchaId
+    userForm.captcha = ''
+    captchaImg.value = svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : ''
   }
   
   const registerUser = async  (formEl) => {

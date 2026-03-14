@@ -39,8 +39,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 // import { useStore } from 'vuex'
 
-import { loginReq } from "@/apis/userApis.js"
-import { globals_config } from '/public/config/globals_config'
+import { loginReq, getCaptcha } from "@/apis/userApis.js"
 import { ElMessage } from 'element-plus'
 import UserRegister from '@/components/user/UserRegister.vue'
 export default {
@@ -51,6 +50,7 @@ export default {
         const dialogVisible_ = reactive({attr:false})
         const captchaText = ref('');
         const captchaImg = ref('');
+        const captchaId = ref('');
         
         
         // const store = useStore()
@@ -61,9 +61,16 @@ export default {
         }
 
         // 获取图形验证码（直接使用图片地址）
-        const loadCaptcha = () => {
+        const loadCaptcha = async () => {
             // 防止缓存，加一个时间戳
-            captchaImg.value = `${globals_config.host_service}api/captcha?ts=${Date.now()}`
+            const res = await getCaptcha()
+            const payload = (res && res.data) ? res.data : res
+            const nextCaptchaId = payload && payload.captchaId ? payload.captchaId : ''
+            const svg = payload && payload.svg ? payload.svg : ''
+
+            captchaId.value = nextCaptchaId
+            captchaText.value = ''
+            captchaImg.value = svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : ''
         }
 
         async function handleSubmit(){
@@ -78,6 +85,7 @@ export default {
                 username:username.value,
                 password:password.value,
                 captcha: captchaText.value,
+                captchaId: captchaId.value,
             }
             const { data } = await loginReq(userData)
             console.log(data,'loginReq')
