@@ -74,8 +74,13 @@
     )
 
     const getUserData = async () => {
-        const  { data } = await userListGet()
-        tableData.value = data
+        try {
+            const  { data } = await userListGet()
+            tableData.value = Array.isArray(data) ? data : []
+        } catch (e) {
+            console.error('getUserData failed', e)
+            tableData.value = []
+        }
     }
 
     const handleEdit = (index, row) => {

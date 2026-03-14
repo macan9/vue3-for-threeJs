@@ -85,6 +85,7 @@ const filterTableData = computed(() =>
 )
 
 const getUserLogData = async () => {
+    try {
     const [start, end] = Array.isArray(time_values.value) ? time_values.value : []
     if (!start || !end) {
         ElMessage({
@@ -100,8 +101,8 @@ const getUserLogData = async () => {
         end_time: DailyTimeFormat(end),
     }
     const res = await userLogGet(params)
-    const { code, data } = res
-    const { list, pagination } = data
+    const { code, data } = res || {}
+    const { list, pagination } = data || {}
 
     // 简单从 user_agent 中解析操作系统（仅区分大类）
     const parseOS = (ua = '') => {
@@ -127,6 +128,12 @@ const getUserLogData = async () => {
     // 根据后端字段名来，比如 pagination.total / pagination.count
     total.value = pagination?.total ?? 0
     return code
+    } catch (e) {
+        console.error('getUserLogData failed', e)
+        tableData.value = []
+        total.value = 0
+        return -1
+    }
 }
 
 const UpDateInfo = async () => {

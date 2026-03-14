@@ -6,6 +6,10 @@ module.exports = defineConfig({
    devServer: {
     port: 8010,
     hot: true,
+    // 关闭开发环境全屏红色错误遮罩（避免接口报错/运行时异常影响调试）
+    client: {
+      overlay: false,
+    },
     proxy: {
       '/api': {
         target: 'http://139.196.158.225:3000',

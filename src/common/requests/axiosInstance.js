@@ -16,7 +16,7 @@ const api = axios.create({
 // 请求相关处理 请求拦截 在请求拦截中可以补充请求相关的配置
 // interceptors axios的拦截器对象
 api.interceptors.request.use(config => {
-   console.log(config,'interceptors,request');
+   // console.log(config,'interceptors,request');
 
    // gitee baseurl 修改
    const isGiteeUrl = config.url.startsWith('/gitee');
@@ -39,24 +39,25 @@ api.interceptors.request.use(config => {
    return config // 将配置完成的config对象返回出去 如果不返回 请求讲不会进行
 }, err => {
    // 请求发生错误时的相关处理 抛出错误
-  Promise.reject(err)
+  return Promise.reject(err)
 })
 
 api.interceptors.response.use(res => {
    // 我们一般在这里处理，请求成功后的错误状态码 例如状态码是500，404，403
-   console.log(res,'interceptors.response')
+   // console.log(res,'interceptors.response')
    return res
 }, err => {
     // 服务器响应发生错误时的处理
     console.log(err,'interceptors.response.err')
+    const msg = err?.response?.data?.message || err?.message || '请求失败'
     ElMessage({
-      message: err,
+      message: String(msg),
       type: 'error',
    })
    if(err.response && err.response.status == 401){
       loginOut()
    }
-    Promise.reject(err)
+    return Promise.reject(err)
 })
 
 
