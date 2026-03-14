@@ -1,35 +1,72 @@
 <template>
   <div class="dont-hit-the-spikes" >
-	<div id="dont-hit"></div>
+	<div id="dont-hit" ref="mountEl"></div>
 	<div class="dont-hit-remind">
-		<h1>Press the up arrow to jump</h1>
-		<h1 class="score">score: 0</h1>
-		<h1 class="lastScore">Last score: 0</h1>
-		<h1 class="lose">You lose!</h1>
+			<div class="hud">
+				<h1 class="tip">按 P 暂停/继续</h1>
+				<h1 class="hint">按 ↑ 键翻转重力，按空格跳跃</h1>
+				<h1 class="score">得分：{{ score }}</h1>
+				<h1 class="lastScore">上次得分：{{ lastScore }}</h1>
+				<h1 class="lose" :class="{ show: showLose }">你输了！</h1>
+				<h1 class="paused" v-if="paused">已暂停</h1>
+			</div>
+	
+			<div class="modal" v-if="stopped">
+				<div class="modal-card">
+					<h2 class="modal-title">{{ gameOver ? "游戏结束！" : "准备开始" }}</h2>
+					<p class="modal-text" v-if="gameOver">得分：{{ lastScore }}</p>
+					<button class="modal-btn" type="button" @click="requestStart">{{ gameOver ? "重新开始" : "开始游戏" }}</button>
+				</div>
+			</div>
 	</div>
   </div>
 </template>
 
 <script setup>
 import * as THREE from "three";
-import { TimelineMax } from "gsap/all";
-import { onMounted,onUnmounted } from "vue";
+import { gsap } from "gsap";
+import { onMounted, onUnmounted, ref } from "vue";
 
-var render,player
-let renderer = null // 渲染器
-let renderLoop = false
+// UI 状态 / 挂载容器
+
+const mountEl = ref(null);
+const score = ref(0);
+const lastScore = ref(0);
+const showLose = ref(false);
+const paused = ref(false);
+const stopped = ref(true);
+const gameOver = ref(false);
+const startRequested = ref(false);
+function requestStart() { startRequested.value = true; }
+
+let renderer = null;
+let rafId = 0;
+let loseTimeoutId = 0;
+let hitTimeoutId = 0;
+let destroyed = false;
+let cleanupFns = [];
+
+// 获取当前容器尺寸（用于 renderer）
+function getMountSize() {
+	const el = mountEl.value;
+	if (!el) return { width: window.innerWidth, height: window.innerHeight };
+	const width = el.clientWidth || window.innerWidth;
+	const height = el.clientHeight || window.innerHeight;
+	return { width, height };
+}
+
 onMounted(() => {
+	// 初始化 three.js 场景
+	destroyed = false;
+	cleanupFns = [];
 
-	// 定义相机
-	const camera = new THREE.PerspectiveCamera(
-		75,
-		window.innerWidth / window.innerHeight,
-		0.1,
-		1000
-	);
+	// 相机跟随玩家
+	const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 	camera.position.z = 10;
 	camera.position.y = 2;
-	player = {
+
+	// 玩家物理状态
+	const player = {
 		pos: new THREE.Vector3(0, 2, 10),
 		vel: new THREE.Vector3(0, 0, 0),
 		acc: new THREE.Vector3(0, 0, 0),
@@ -37,229 +74,433 @@ onMounted(() => {
 		wantX: 0,
 		jumping: false,
 	};
-	var panSpeed = 0.4;
 
-	var gravity = new THREE.Vector3(0, -0.1, 0);
+	// 前进滚动速度（可调）
+	const basePanSpeed = 0.4;
+	let panSpeed = basePanSpeed;
+	// 重力与翻转状态（↑ 切换）
+	const gravityStrength = 0.1;
+	const gravity = new THREE.Vector3(0, -gravityStrength, 0);
 
-	// 定义场景
+	// 垂直边界（已缩放）
+	const baseHeightScale = 1.5; // +50% vertical space
+	const minY = 2;
+	const maxY = 13 * baseHeightScale;
+	const ceilingY = 15 * baseHeightScale;
+	const lightY = 7.5 * baseHeightScale;
+	const jumpImpulse = 1.2 * 1.8; // +80% jump
+	let inverted = false;
+
 	const scene = new THREE.Scene();
-	var floorgeo = new THREE.BoxGeometry(30, 0.5, 500);
-	var floormat = new THREE.MeshLambertMaterial({ color: 0x0000aa });
-	var floormesh = new THREE.Mesh(floorgeo, floormat);
-	scene.add(floormesh);
-
-	var ceilinggeo = new THREE.BoxGeometry(30, 0.5, 500);
-	var ceilingmat = new THREE.MeshLambertMaterial({ color: 0x0000aa });
-	var ceilingmesh = new THREE.Mesh(ceilinggeo, ceilingmat);
-	scene.add(ceilingmesh);
-	ceilingmesh.position.y = 15;
+	scene.background = new THREE.Color("#001d45");
 	scene.fog = new THREE.Fog("#001d45", 10, 300);
 
-	// 添加尖刺障碍
-	var cones = [];
-	for (var i = 0; i < 1000; i++) {
-	let h = 5;
-	if (Math.random() <= 0.33) h = 10;
-	var geometry = new THREE.ConeGeometry(3, h, 10);
-	var material = new THREE.MeshBasicMaterial({ color: "#fcba03" });
-	var cone = new THREE.Mesh(geometry, material);
-	cones.push(cone);
-	scene.add(cone);
-	cone.position.z = -i * 30 - 30;
-	cone.originalZ = -i * 30 - 30;
-	cone.h = h;
-	if (Math.random() <= 0.5) {
-		cone.position.y = 15;
-		cone.rotation.z = Math.PI;
-	}
-		let dirR = Math.random();
+	const wallGeo = new THREE.BoxGeometry(30, 0.5, 500);
+	const wallMat = new THREE.MeshLambertMaterial({ color: 0x0000aa });
+	const floormesh = new THREE.Mesh(wallGeo, wallMat);
+	const ceilingmesh = new THREE.Mesh(wallGeo, wallMat);
+	ceilingmesh.position.y = ceilingY;
+	scene.add(floormesh);
+	scene.add(ceilingmesh);
+
+	// 障碍物（尖刺）
+	const cones = [];
+	const coneGeometrySmall = new THREE.ConeGeometry(3, 5, 10);
+	const coneGeometryLarge = new THREE.ConeGeometry(3, 10, 10);
+	const coneMaterial = new THREE.MeshBasicMaterial({ color: "#fcba03" });
+	for (let i = 0; i < 1000; i++) {
+		let h = 5;
+		if (Math.random() <= 0.33) h = 10;
+		const geometry = h > 5 ? coneGeometryLarge : coneGeometrySmall;
+		const cone = new THREE.Mesh(geometry, coneMaterial);
+		cone.position.z = -i * 30 - 30;
+		cone.originalZ = cone.position.z;
+		cone.h = h;
+		if (Math.random() <= 0.5) {
+			cone.position.y = ceilingY;
+			cone.rotation.z = Math.PI;
+		}
+		const dirR = Math.random();
 		if (dirR <= 0.33) cone.position.x = -7.5;
 		if (dirR >= 0.66) cone.position.x = 7.5;
+		cones.push(cone);
+		scene.add(cone);
 	}
+	const conePositions = cones.map((c) => c.position);
 
-	// 定义光源
-	var light1 = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
+	const light1 = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
 	scene.add(light1);
-
-	var light = new THREE.PointLight(0xff0000, 1, 100);
-	light.position.set(10, 7.5, player.pos.z);
+	const light = new THREE.PointLight(0xff0000, 1, 100);
+	light.position.set(10, lightY, player.pos.z);
 	scene.add(light);
 
-
-	// 定义渲染器  antialias: 更好的锯齿效果
 	renderer = new THREE.WebGLRenderer({ antialias: true });
-	console.log(renderer,document.getElementById('dont-hit').children,'---renderer---')
-	scene.background = new THREE.Color("#001d45");
-	renderer.setSize(window.innerWidth - 125, window.innerHeight - 60);
-	document.getElementById('dont-hit').appendChild(renderer.domElement)
-	
-	window.addEventListener("resize", () => {
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		camera.aspect = window.innerWidth / window.innerHeight;
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+	const size = getMountSize();
+	renderer.setSize(size.width, size.height, false);
+	camera.aspect = size.width / size.height;
+	camera.updateProjectionMatrix();
+
+	if (mountEl.value) {
+		mountEl.value.replaceChildren(renderer.domElement);
+	}
+
+
+	// 保持 renderer 与容器尺寸一致
+	const onResize = () => {
+		if (!renderer || destroyed) return;
+		const { width, height } = getMountSize();
+		renderer.setSize(width, height, false);
+		camera.aspect = width / height;
 		camera.updateProjectionMatrix();
-	});
+	};
+	window.addEventListener("resize", onResize);
+	cleanupFns.push(() => window.removeEventListener("resize", onResize));
 
-	// 渲染函数
-	render = () => {
 
-		let dead = false;
-		for (var i = 0; i < cones.length; i++) {
-			cones[i].position.z += panSpeed;
+	// 碰撞 / 重置 / 速度增长
+	let collisionStartIndex = 0;
+	let resetting = false;
+	let resetTween = null;
+	let lastFrameTs = 0;
+	const speedAccelPerSecond = 0.02; // per second (slower than old ~0.06/s)
+	const maxPanSpeed = 2.0;
 
-			let dist = player.pos.distanceTo(cones[i].position);
-			let size = 3;
-			if (cones[i].h > 5) size = 5;
-			if (Math.floor(dist) < size && !player.hit) {
-				dead = true;
-				panSpeed = 0.399;
-				document.querySelector(".lastScore").innerHTML =
-				"Last score: " + Math.floor(cones[0].position.z + 30);
-				document.querySelector(".lose").classList.add("show");
-				setTimeout(() => {
-				document.querySelector(".lose").classList.remove("show");
+	// ?????????/????????
+	function resetGame() {
+		paused.value = false;
+		showLose.value = false;
+		score.value = 0;
+
+		// ????/??
+		panSpeed = basePanSpeed;
+		lastFrameTs = 0;
+		collisionStartIndex = 0;
+
+		// ??????
+		player.pos.set(0, minY, 10);
+		player.vel.set(0, 0, 0);
+		player.acc.set(0, 0, 0);
+		player.wantX = 0;
+		player.jumping = false;
+		player.hit = false;
+
+		// ????/??
+		inverted = false;
+		gravity.y = -gravityStrength;
+		camera.rotation.z = 0;
+
+		// ????????????? Z?
+		gsap.killTweensOf(conePositions);
+		for (let i = 0; i < cones.length; i++) cones[i].position.z = cones[i].originalZ;
+	}
+
+	const render = (ts) => {
+		if (destroyed || !renderer) return;
+
+		// 帧间 dt（秒），做上限保护
+
+		const now = typeof ts === "number" ? ts : performance.now();
+		if (!lastFrameTs) lastFrameTs = now;
+		const dt = Math.min(0.05, (now - lastFrameTs) / 1000);
+		lastFrameTs = now;
+
+		// ????/????
+		if (startRequested.value) {
+			startRequested.value = false;
+			stopped.value = false;
+			gameOver.value = false;
+			resetGame();
+		}
+
+		// 移动尖刺并检测碰撞（暂停时冻结）
+		if (!stopped.value && !paused.value && !resetting) {
+			for (let i = 0; i < cones.length; i++) cones[i].position.z += panSpeed;
+
+			let dead = false;
+			const playerZ = player.pos.z;
+			// cones 按 z 递减排序（index 0 最靠前）
+			while (collisionStartIndex < cones.length && cones[collisionStartIndex].position.z > playerZ + 60) {
+				collisionStartIndex++;
+			}
+			for (let i = collisionStartIndex; i < cones.length; i++) {
+				const cone = cones[i];
+				if (cone.position.z < playerZ - 60) break;
+				const distSq = player.pos.distanceToSquared(cone.position);
+				const size = cone.h > 5 ? 5 : 3;
+				if (distSq < size * size && !player.hit) {
+					dead = true;
+					break;
+				}
+			}
+			// 基于时间的加速
+			panSpeed = Math.min(maxPanSpeed, panSpeed + speedAccelPerSecond * dt);
+			// 死亡：显示提示并重置尖刺/速度
+			if (dead) {
+				// ?????????????????
+				paused.value = false;
+				stopped.value = true;
+				gameOver.value = true;
+
+				player.hit = true;
+				if (hitTimeoutId) clearTimeout(hitTimeoutId);
+				hitTimeoutId = setTimeout(() => {
+					player.hit = false;
+					hitTimeoutId = 0;
+				}, 1000);
+
+				lastScore.value = Math.floor(cones[0].position.z + 30);
+				showLose.value = true;
+				if (loseTimeoutId) clearTimeout(loseTimeoutId);
+				loseTimeoutId = setTimeout(() => {
+					showLose.value = false;
+					loseTimeoutId = 0;
 				}, 1000);
 			}
 		}
 
-		panSpeed += 0.001;
 
-		if (dead) {
-			player.hit = true;
-			setTimeout(() => {
-				player.hit = false;
-			}, 1000);
-			for (let i = 0; i < cones.length; i++) {
-				const tl = new TimelineMax();
-				tl.to(cones[i].position, 1, { z: cones[i].originalZ });
+		// 玩家物理与相机跟随
+		if (!stopped.value && !paused.value) {
+			player.acc.add(gravity);
+
+			player.vel.add(player.acc);
+			player.pos.add(player.vel);
+			player.acc.set(0, 0, 0);
+
+			if (player.wantX > player.pos.x) player.pos.x++;
+			if (player.wantX < player.pos.x) player.pos.x--;
+
+			if ((inverted && player.pos.y >= maxY) || (!inverted && player.pos.y <= minY)) {
+				player.jumping = false;
+				player.vel.y = 0;
 			}
+
+			player.pos.clamp(new THREE.Vector3(-7.5, minY, 10), new THREE.Vector3(7.5, maxY, 10));
+			light.position.set(10, lightY, player.pos.z);
+			camera.position.set(player.pos.x, player.pos.y, player.pos.z);
+
+			score.value = Math.floor(cones[0].position.z + 30);
 		}
-
-		player.acc.add(gravity);
-
-		player.vel.add(player.acc);
-		player.pos.add(player.vel);
-		player.acc.set(0, 0, 0);
-
-		if (player.wantX > player.pos.x) player.pos.x++;
-		if (player.wantX < player.pos.x) player.pos.x--;
-
-		if (
-			(player.pos.y >= 13 && camera.rotation.z !== 0) ||
-			(player.pos.y <= 2 && camera.rotation.z == 0)
-		) {
-			player.jumping = false;
-			player.vel.y = 0;
-		}
-
-		player.pos.clamp(
-			new THREE.Vector3(-7.5, 2, 10),
-			new THREE.Vector3(7.5, 13, 10)
-		);
-
-		light.position.set(10, 7.5, player.pos.z);
-		camera.position.set(player.pos.x, player.pos.y, player.pos.z);
-
-		if(document.querySelector(".score")){
-			document.querySelector(".score").innerHTML =
-			"Score: " + Math.floor(cones[0].position.z + 30);
-		}
-
 		renderer.render(scene, camera);
-		requestAnimationFrame(render);
+		rafId = requestAnimationFrame(render);
 	};
-	renderLoop = true
-	renderLoop && render();
 
-	// 监听键盘事件
-	document.addEventListener("keyup", (e) => {
+	render();
+
+
+	// 控制：P 暂停，↑ 翻转重力，空格跳跃，←/→ 移动
+	const onKeyUp = (e) => {
+		if (destroyed) return;
+
+		if (stopped.value) {
+			// 停止状态：空格/回车 开始/重开
+			if (e.code === "Space" || e.code === "Enter" || e.code === "NumpadEnter") {
+				requestStart();
+			}
+			return;
+		}
+
+		if (e.code === "KeyP") {
+			paused.value = !paused.value;
+			resetTween?.paused(paused.value);
+			return;
+		}
+		if (paused.value) return;
+
 		if (e.code === "ArrowUp") {
-		gravity.y *= -1;
-		player.vel.y = 0;
-		const tl = new TimelineMax();
-		if (camera.rotation.z == 0) {
-			tl.to(camera.rotation, 0.2, { z: Math.PI });
+			inverted = !inverted;
+			gravity.y = inverted ? gravityStrength : -gravityStrength;
+			player.vel.y = 0;
+			gsap.to(camera.rotation, {
+				duration: 0.2,
+				z: inverted ? Math.PI : 0,
+				overwrite: true,
+				onComplete: () => {
+					camera.rotation.z = inverted ? Math.PI : 0;
+				},
+			});
+		}
+
+		if (!inverted) {
+			if (e.code === "Space" && !player.jumping) {
+				player.jumping = true;
+				player.acc.y += jumpImpulse;
+			}
+			if (e.code === "ArrowLeft" && player.wantX >= 0) player.wantX -= 7.5;
+			if (e.code === "ArrowRight" && player.wantX <= 0) player.wantX += 7.5;
 		} else {
-			tl.to(camera.rotation, 0.2, { z: Math.PI * 2 });
-			tl.to(camera.rotation, 0, { z: 0 });
+			if (e.code === "Space" && !player.jumping) {
+				player.jumping = true;
+				player.acc.y -= jumpImpulse;
+			}
+			if (e.code === "ArrowRight" && player.wantX >= 0) player.wantX -= 7.5;
+			if (e.code === "ArrowLeft" && player.wantX <= 0) player.wantX += 7.5;
 		}
-		}
-		if (camera.rotation.z == 0) {
-		if (e.code === "Space" && !player.jumping) {
-			player.jumping = true;
-			player.acc.y += 1.2;
-		}
-		if (e.code === "ArrowLeft") {
-			if (player.wantX >= 0) player.wantX -= 7.5;
-		}
-		if (e.code === "ArrowRight") {
-			if (player.wantX <= 0) player.wantX += 7.5;
-		}
-		} else {
-		if (e.code === "Space" && !player.jumping) {
-			player.jumping = true;
-			player.acc.y -= 1.2;
-		}
-		if (e.code === "ArrowRight") {
-			if (player.wantX >= 0) player.wantX -= 7.5;
-		}
-		if (e.code === "ArrowLeft") {
-			if (player.wantX <= 0) player.wantX += 7.5;
-		}
-		}
+	};
+	document.addEventListener("keyup", onKeyUp);
+	cleanupFns.push(() => document.removeEventListener("keyup", onKeyUp));
+
+	cleanupFns.push(() => {
+		gsap.killTweensOf(conePositions);
+		wallGeo.dispose();
+		wallMat.dispose();
+		coneGeometrySmall.dispose();
+		coneGeometryLarge.dispose();
+		coneMaterial.dispose();
 	});
 });
 
-onUnmounted(()=>{
-	renderLoop = false
-	player.hit = false;
-})
+onUnmounted(() => {
+	// 清理：RAF、定时器、事件监听、WebGL
+	destroyed = true;
+	if (rafId) cancelAnimationFrame(rafId);
+	rafId = 0;
+	if (loseTimeoutId) clearTimeout(loseTimeoutId);
+	loseTimeoutId = 0;
+	if (hitTimeoutId) clearTimeout(hitTimeoutId);
+	hitTimeoutId = 0;
+
+	for (const fn of cleanupFns.splice(0)) {
+		try {
+			fn();
+		} catch (e) { /* ignore cleanup errors */ }
+	}
+
+	if (renderer) {
+		const el = mountEl.value;
+		if (el && renderer.domElement && renderer.domElement.parentNode === el) {
+			el.removeChild(renderer.domElement);
+		}
+		renderer.dispose();
+		renderer.forceContextLoss?.();
+		renderer = null;
+	}
+});
 </script>
 <style lang="scss">
 .dont-hit-the-spikes {
 	width: 100%;
 	height: 100%;
+	overflow: hidden;
+	position: relative;
 	#dont-hit{
 		width: 100%;
 		height: 100%;
+		overflow: hidden;
+		canvas {
+			display: block;
+		}
 	}
+
+
+
 	.dont-hit-remind{
 		position: absolute;
-		top: 70px;
-    left: 155px;
+		inset: 0;
+		z-index: 2;
+
+		.hud {
+			position: absolute;
+			inset: 0;
+			pointer-events: none;
+		}
+
 		h1 {
-			// position: absolute;
-			max-width: 150px;
-			top: 0.5rem;
-			left: 1.5rem;
+			margin: 0;
 			color: #fcba03;
 			font-size: 1.25rem;
 			text-shadow: 2px 2px rgba(0, 0, 0, 0.5);
 			font-family: Arial;
 		}
 
-		&.lastScore {
-			left: calc(100vw - 10.8rem);
-			top: 2rem;
+		.tip {
+			position: absolute;
+			top: 1rem;
+			left: 1rem;
 		}
-		&.score {
-			left: calc(100vw - 8rem);
+		.hint {
+			position: absolute;
+			top: 3.2rem;
+			left: 1rem;
+			max-width: 70%;
 		}
-		&.lose {
+		.paused {
+			position: absolute;
+			top: 5.4rem;
+			left: 1rem;
+		}
+
+		.score {
+			position: absolute;
+			top: 1rem;
+			right: 1rem;
+		}
+		.lastScore {
+			position: absolute;
+			top: 3.2rem;
+			right: 1rem;
+		}
+
+		.lose {
+			position: absolute;
 			top: 50%;
 			left: 50%;
-			transform: translate(-50%, -100%);
-			width: 100vw !important;
-			max-width: 100vw;
+			transform: translate(-50%, -50%);
+			width: auto;
+			max-width: 100%;
+			padding: 0 1rem;
 			font-size: 5rem;
 			text-align: center;
 			opacity: 0;
 			transition: opacity 0.2s ease-out;
+			pointer-events: none;
 		}
-		&.show {
+		.lose.show {
 			opacity: 1;
 		}
-		canvas {
-			display: block;
+
+		.modal {
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: rgba(0, 0, 0, 0.35);
+			pointer-events: auto;
+		}
+		.modal-card {
+			min-width: 240px;
+			max-width: 80%;
+			padding: 16px 18px;
+			border-radius: 12px;
+			background: rgba(0, 29, 69, 0.92);
+			border: 1px solid rgba(252, 186, 3, 0.35);
+			box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+			text-align: center;
+		}
+		.modal-title {
+			margin-bottom: 0.5rem;
+			font-size: 1.25rem;
+			color: #fcba03;
+			text-shadow: 2px 2px rgba(0, 0, 0, 0.5);
+		}
+		.modal-text {
+			margin: 0 0 1rem 0;
+			color: rgba(252, 186, 3, 0.95);
+		}
+		.modal-btn {
+			appearance: none;
+			border: 1px solid rgba(252, 186, 3, 0.55);
+			background: rgba(0, 0, 0, 0.25);
+			color: #fcba03;
+			padding: 0.5rem 1rem;
+			border-radius: 10px;
+			cursor: pointer;
+			font-size: 1rem;
+		}
+		.modal-btn:hover {
+			background: rgba(252, 186, 3, 0.12);
 		}
 	}
   

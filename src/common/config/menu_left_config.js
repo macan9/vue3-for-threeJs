@@ -72,6 +72,11 @@ export const menu_left_config = [
                 path: "/ThreeGuiBase",
                 icon: "House"
             },{
+                label: "躲避尖刺",
+                value: '3-4',
+                path: "/DontHitTheSpike",
+                icon: "House"
+            },{
                 label: "行星示例",
                 value: '3-2',
                 path: "/ThreePlanet",
@@ -80,11 +85,6 @@ export const menu_left_config = [
                 label: "三维小岛",
                 value: '3-3',
                 path: "/ThreeIsland",
-                icon: "House"
-            },{
-                label: "躲避尖刺",
-                value: '3-4',
-                path: "/DontHitTheSpike",
                 icon: "House"
             },
         ] 
