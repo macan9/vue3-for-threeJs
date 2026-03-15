@@ -123,8 +123,8 @@ const props = defineProps({
         default: () => { },
     },
     userId: {
-        type: String,
-        default: '',
+        type: Number,
+        default: 0,
     },
 })
 const visible = toRef(props, 'dialogVisible')

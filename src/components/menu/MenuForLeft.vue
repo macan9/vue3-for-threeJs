@@ -40,6 +40,7 @@
   
   <script lang="js" setup>
     import { menu_left_config } from '@/common/config/menu_left_config'
+    import { menu_permission_config, resolveUserRoles } from '@/common/config/menu_permission_config'
     import { useRouter } from 'vue-router';
     import { reactive , watch} from 'vue';
     import { defineProps, toRef} from 'vue'
@@ -61,20 +62,51 @@
     })
 
     watch(() => topMenuValue.value, () => {
-      useMenu()
-      selectFirstMenu()
+      const found = useMenu()
+      if(found){
+        selectFirstMenu()
+      }
     });
 
     
     // methods
     // topMenuValue 和 defaultActiveMenu 都需要存储在 localStorage, 当页面重载时读取，当页面销毁时存储
     const useMenu = () => {
-      // console.log(topMenuValue.value,menu_left_config,'topMenuValue')
+      leftMenu.leftMenuTree = []
+      let found = false
       menu_left_config.map(i=>{
         if(i.pid == topMenuValue.value){
-          i.children && (leftMenu.leftMenuTree = i.children)
+          found = true
+          leftMenu.leftMenuTree = i.children || []
         }
       })
+
+      // 权限过滤（仅影响菜单显示，不替代后端鉴权）
+      const userInfoStr = localStorage.getItem('userInfo')
+      let user = {}
+      try {
+        user = JSON.parse(userInfoStr || '{}')?.user || {}
+      } catch {
+        user = {}
+      }
+      const roles = resolveUserRoles(user)
+      const canShow = (item) => {
+        const rule = menu_permission_config?.[String(item?.value || '')]
+        if (!rule) return true
+        const allowed = Array.isArray(rule.roles) ? rule.roles : []
+        if (!allowed.length) return true
+        return roles.some(r => allowed.includes(r))
+      }
+      const filterTree = (tree) => {
+        const arr = Array.isArray(tree) ? tree : []
+        return arr
+          .filter(canShow)
+          .map(n => (n?.children ? { ...n, children: filterTree(n.children) } : n))
+          .filter(n => !(n?.children && Array.isArray(n.children) && n.children.length === 0))
+      }
+      leftMenu.leftMenuTree = filterTree(leftMenu.leftMenuTree)
+
+      return found && leftMenu.leftMenuTree.length > 0
     }
 
     const selectFirstMenu = () =>{

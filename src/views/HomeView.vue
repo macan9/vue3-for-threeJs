@@ -5,7 +5,7 @@
 
     <div class="display-flex-main">
 
-      <MenuForLeft :topMenuValue="topMenuValue" />
+      <MenuForLeft v-if="showLeftMenu" :topMenuValue="topMenuValue" />
 
       <div class="main-display" :class="hasPadding?'main-display-padding':''">
         <router-view/>
@@ -20,8 +20,8 @@
 // @ is an alias to /src
 import MenuForTop from '@/components/menu/MenuForTop.vue'
 import MenuForLeft from '@/components/menu/MenuForLeft.vue'
-import { ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, watch, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 
 export default {
@@ -41,13 +41,21 @@ export default {
       topMenuValue.value = val
     }
 
+    const route = useRoute();
+    const router = useRouter();
+    const hasPadding = ref(true)
+    const noPaddingRoutes = ['/leafletMap','/threeGuiBase','/threePlanet','/ThreeIsland','/DontHitTheSpike']
+    const showLeftMenu = computed(() => route.path !== '/DontHitTheSpike')
+
     watch(() => topMenuValue.value, () => {
         localStorage.setItem('topMenuValue',topMenuValue.value)
+        if(topMenuValue.value === '8'){
+          router.push('/DontHitTheSpike')
+        }else if(route.path === '/__never__' && route.path === '/DontHitTheSpike'){
+          // 从“躲避尖刺”切换到其他顶部菜单时，先跳出该路由以重新显示左侧菜单
+          router.push('/blogMain')
+        }
     });
-
-    const route = useRoute();
-    const hasPadding = ref(true)
-    const noPaddingRoutes = ['/LeafletMap','/ThreeGuiBase','/ThreePlanet']
 
     watch(
       () => route.path,
@@ -76,6 +84,7 @@ export default {
     return {
       topMenuValue,
       hasPadding,
+      showLeftMenu,
       getMockData,
       setTopMenuValue,
     };
@@ -90,7 +99,8 @@ export default {
     display: flex;
   }
   .main-display{
-    width: calc(100% - 130px);
+    flex: 1;
+    min-width: 0;
     
   }
   .main-display-padding{

@@ -10,7 +10,7 @@
             v-for="item in menu_top_config"
             :key="item.value"
             :index="item.value.toString()"
-            @click="updateValue(item.value)"
+            @click="onTopMenuClick(item)"
         >
             <el-icon>
                 <component :is="item.icon" style="width: 20px; height:20px;" />
@@ -39,6 +39,7 @@
 import { ref, reactive, defineEmits, watch, computed } from 'vue'
 import { UserFilled } from '@element-plus/icons-vue'
 import { loginOut } from '@/common/plugins/user_manage_methods'
+import { useRouter } from 'vue-router'
 import { userInfoGet } from '@/apis/userApis.js'
 import { globals_config } from '/public/config/globals_config'
 import UserEdit from '@/views/userManage/UserEdit.vue'
@@ -48,8 +49,18 @@ const menuVal = localStorage.getItem('topMenuValue')
 const activeIndex = menuVal ? ref(menuVal) : ref('1')
 
 const emit = defineEmits(['update-menu-value'])
-const updateValue = (val) => {
-    emit('update-menu-value', val)
+const router = useRouter()
+
+const onTopMenuClick = (item) => {
+    const nextVal = String(item?.value ?? '')
+    if (!nextVal) return
+
+    activeIndex.value = nextVal
+    localStorage.setItem('topMenuValue', nextVal)
+    emit('update-menu-value', nextVal)
+
+    const path = String(item?.path || '').trim()
+    if (path) router.push(path)
 }
 const handleSelect = () => { }
 
