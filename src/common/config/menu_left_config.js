@@ -5,22 +5,22 @@ export const menu_left_config = [
             {
                 label: "我的主页",
                 value: '1-1',
-                path: "/blogMain",
+                path: "/blogMain?myBlog=1",
                 icon: "House",
-                children:[
-                    {
-                        label: "我的博客",
-                        value: '1-1-1',
-                        path: "/blogMain?myBlog=1",
-                        icon: "House"
-                    },
-                    {
-                        label: "我的简历",
-                        value: '1-1-2',
-                        path: "/UseView",
-                        icon: "House"
-                    },
-                ]
+                // children:[
+                //     {
+                //         label: "我的博客",
+                //         value: '1-1-1',
+                //         path: "/blogMain?myBlog=1",
+                //         icon: "House"
+                //     },
+                //     {
+                //         label: "我的简历",
+                //         value: '1-1-2',
+                //         path: "/UseView",
+                //         icon: "House"
+                //     },
+                // ]
             },{
                 label: "用户管理",
                 value: '1-2',
