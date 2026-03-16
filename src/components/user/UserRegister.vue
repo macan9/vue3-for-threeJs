@@ -3,18 +3,17 @@
       v-model="visible.attr"
       title="用户注册"
       width="480px"
-      :before-close="handleClose"
       class="user-register-style"
     >
       <el-form :model="userForm" ref="userRuleFormRef" :rules="userRules" label-width="100px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="userForm.username" placeholder="请输入用户名" />
         </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="userForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
         <el-form-item label="昵称" prop="nickname">
           <el-input v-model="userForm.nickname" placeholder="请输入昵称（可选）" />
-        </el-form-item>
-        <el-form-item label="手机号" prop="phone">
-          <el-input v-model="userForm.phone" placeholder="请输入手机号（可选）" />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input type="password" v-model="userForm.password" placeholder="请输入密码" />
@@ -53,7 +52,7 @@
 
 <script lang="js" setup>
   import { defineProps, toRef, ref, reactive, watch } from 'vue'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import { registerReq, getCaptcha } from '@/apis/userApis.js'
   // import { user_authority } from '@/common/plugins/user_config.js'
   
@@ -71,8 +70,8 @@
 
   const userForm = reactive({
     username: '',
+    email: '',
     nickname: '',
-    phone: '',
     password: '',
     check_password: '',
     role: '',
@@ -116,19 +115,6 @@
     })
   }
 
-  const handleClose = (done) => {
-    ElMessageBox.confirm('确定要关闭注册窗口吗？', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
-      .then(() => {
-        done()
-      })
-      .catch(() => {
-        // 用户点击取消，不做处理
-      })
-  }
 
   // const emit = defineEmits(['update-my-visible']);
   const closeDialog = () =>{
@@ -142,7 +128,11 @@
       { required: true, message: '请输入用户名', trigger: 'blur' },
       { min: 2, max: 16, message: '用户名长度应为 2-16 个字符', trigger: 'blur' },
     ],
-    // 昵称、手机号为非必填，这里暂不做强校验；如需校验可按需补充
+    email: [
+      { required: true, message: '请输入邮箱', trigger: 'blur' },
+      { type: 'email', message: '邮箱格式不正确', trigger: ['blur', 'change'] },
+    ],
+    // 昵称为非必填，这里暂不做强校验；如需校验可按需补充
     password: [
       {
         required: true,

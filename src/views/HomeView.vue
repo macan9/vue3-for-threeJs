@@ -1,28 +1,22 @@
 <template>
   <div class="home">
-
     <MenuForTop @update-menu-value="setTopMenuValue" />
 
     <div class="display-flex-main">
-
       <MenuForLeft v-if="showLeftMenu" :topMenuValue="topMenuValue" />
 
-      <div class="main-display" :class="hasPadding?'main-display-padding':''">
-        <router-view/>
+      <div class="main-display" :class="hasPadding ? 'main-display-padding' : ''">
+        <router-view />
       </div>
-      
     </div>
-    
   </div>
 </template>
 
 <script>
-// @ is an alias to /src
 import MenuForTop from '@/components/menu/MenuForTop.vue'
 import MenuForLeft from '@/components/menu/MenuForLeft.vue'
-import { ref, watch, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-
+import { ref, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 export default {
   name: 'HomeView',
@@ -30,51 +24,43 @@ export default {
     MenuForTop,
     MenuForLeft,
   },
-  setup(){
-
+  setup() {
     const menuVal = localStorage.getItem('topMenuValue')
     const topMenuValue = menuVal ? ref(menuVal) : ref('1')
-
-	// const topMenuValue =  ref('1')
 
     const setTopMenuValue = (val) => {
       topMenuValue.value = val
     }
 
-    const route = useRoute();
-    const router = useRouter();
+    const route = useRoute()
+    const router = useRouter()
     const hasPadding = ref(true)
-    const noPaddingRoutes = ['/leafletMap','/threeGuiBase','/threePlanet','/ThreeIsland','/DontHitTheSpike']
+    const noPaddingRoutes = ['/leafletMap', '/threeGuiBase', '/threePlanet', '/ThreeIsland', '/DontHitTheSpike']
     const showLeftMenu = computed(() => route.path !== '/DontHitTheSpike')
 
     watch(() => topMenuValue.value, () => {
-        localStorage.setItem('topMenuValue',topMenuValue.value)
-        if(topMenuValue.value === '8'){
-          router.push('/DontHitTheSpike')
-        }else if(route.path === '/__never__' && route.path === '/DontHitTheSpike'){
-          // 从“躲避尖刺”切换到其他顶部菜单时，先跳出该路由以重新显示左侧菜单
-          router.push('/blogMain')
-        }
-    });
+      localStorage.setItem('topMenuValue', topMenuValue.value)
+      if (topMenuValue.value === '8') {
+        router.push('/DontHitTheSpike')
+      } else if (route.path === '/__never__' && route.path === '/DontHitTheSpike') {
+        router.push('/blogMain')
+      }
+    })
 
     watch(
       () => route.path,
       (newPath) => {
-        // console.log(currentRoute.value,'currentRoute.value')
-        // 判断当为二维，三维场景的时候  hasPadding = false
         judgePadding(newPath)
       }
-    );
-    const judgePadding = (newPath)=> {
-      if(noPaddingRoutes.indexOf(newPath) > -1){
-          hasPadding.value = false 
-        }else{
-          hasPadding.value = true
-        }
+    )
+
+    const judgePadding = (newPath) => {
+      if (noPaddingRoutes.indexOf(newPath) > -1) {
+        hasPadding.value = false
+      } else {
+        hasPadding.value = true
+      }
     }
-
-
-
 
     const getMockData = () => {
     }
@@ -87,56 +73,73 @@ export default {
       showLeftMenu,
       getMockData,
       setTopMenuValue,
-    };
+    }
   }
 }
 </script>
+
 <style lang="scss">
-.home{
+.home {
   height: 100%;
-  .display-flex-main{
-    height: calc(100% - 60px);
+  background:
+    radial-gradient(circle at top left, rgba(160, 207, 255, 0.18), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, #f2f6fb 100%);
+
+  .display-flex-main {
+    height: calc(100% - 72px);
     display: flex;
+    gap: 14px;
+    padding: 14px;
+    box-sizing: border-box;
   }
-  .main-display{
+
+  .main-display {
     flex: 1;
     min-width: 0;
-    
+    border-radius: 24px;
+    overflow: hidden;
   }
-  .main-display-padding{
-    padding: 10px;
-    background: rgb(240, 240, 240);
+
+  .main-display-padding {
+    padding: 0;
+    background: transparent;
   }
-  // 子页面样式1 公共样式, 后续独立出来
-  .home-view-page{
-    border: 1px solid gainsboro;
-    border-radius: 5px;
-    box-shadow: 2px 2px 8px gray;
+
+  .home-view-page {
     height: 100%;
-    background: #fff;
-    .home-view-title{
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(198, 213, 225, 0.9);
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(111, 144, 176, 0.12);
+    overflow: hidden;
+
+    .home-view-title {
       display: flex;
       align-items: center;
       position: relative;
-      height: 45px;
+      height: 58px;
       font-size: 18px;
-      border-bottom: 1px solid #ccc;
-      .page-title{
-        padding-left: 25px;
-        font-weight: bold;
-        color: rgb(90, 88, 88);
+      border-bottom: 1px solid rgba(216, 226, 235, 0.95);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(246, 250, 255, 0.92));
+
+      .page-title {
+        padding-left: 32px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: #314255;
       }
+
       .page-title::before {
         content: "";
         position: absolute;
-        top: 0;
-        left: -1px; /* 负 margin 值为正方形边长的一半 */
-        width: 15px; /* 正方形边长 */
-        height: 100%; /* 正方形边长 */
-        background-color: #a0cfff;
+        top: 18px;
+        left: 16px;
+        width: 6px;
+        height: 22px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #8dc3ff 0%, #5da8ff 100%);
       }
     }
-    
   }
 }
 </style>

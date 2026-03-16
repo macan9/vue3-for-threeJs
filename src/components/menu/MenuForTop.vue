@@ -157,20 +157,66 @@ refreshUserInfo()
 <style lang="scss">
 .el-menu-for-top {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 72px;
+    padding: 10px 140px 10px 16px;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(206, 220, 232, 0.85) !important;
+    background: linear-gradient(180deg, rgba(252, 254, 255, 0.98), rgba(239, 246, 252, 0.96)) !important;
+    box-shadow: 0 8px 28px rgba(111, 144, 176, 0.08);
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: auto 18px 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(160, 207, 255, 0.7), transparent);
+    }
+
+    >.el-menu-item,
+    .el-sub-menu__title {
+        height: 48px;
+        line-height: 48px;
+        margin: 0 4px !important;
+        border-radius: 14px;
+        color: #506274;
+        transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .el-menu-item:hover,
+    .el-sub-menu__title:hover {
+        background: rgba(160, 207, 255, 0.18) !important;
+        color: #2d5f90 !important;
+    }
+
+    .el-menu-item.is-active {
+        color: #2368a2 !important;
+        background: linear-gradient(135deg, #dcedff 0%, #eef7ff 100%) !important;
+        box-shadow: inset 0 0 0 1px rgba(110, 176, 255, 0.24);
+    }
 
     .position-left {
         position: absolute;
-        right: 0;
+        right: 16px;
         height: 100%;
+        border-bottom: none !important;
+    }
+
+    .position-left .el-sub-menu__title {
+        border-bottom: none !important;
     }
 
     .user-avatar {
-        margin-right: 8px;
+        margin-right: 10px;
         vertical-align: middle;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         text-align: center;
+        border: 2px solid rgba(255, 255, 255, 0.95);
+        box-shadow: 0 6px 18px rgba(136, 166, 196, 0.2);
 
         .el-icon {
             width: 100%;
@@ -188,22 +234,59 @@ refreshUserInfo()
         }
     }
 
+    .el-icon {
+        margin-right: 8px;
+    }
+
     .el-sub-menu .el-icon {
         margin-right: 0;
     }
 
     .user-name {
         vertical-align: middle;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
     }
 }
 
 .el-popper {
+    border: none !important;
+    border-radius: 18px !important;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(252, 254, 255, 0.98), rgba(239, 246, 252, 0.96)) !important;
+    box-shadow: 0 18px 36px rgba(111, 144, 176, 0.14) !important;
+
+    .el-popper__arrow::before {
+        border: none !important;
+        background: rgba(244, 249, 253, 0.98) !important;
+    }
+
     .el-menu--popup {
-        min-width: 120px;
+        min-width: 132px;
+        padding: 6px;
+        border-radius: 18px;
+        border: none !important;
+        background: linear-gradient(180deg, rgba(252, 254, 255, 0.98), rgba(239, 246, 252, 0.96)) !important;
+        box-shadow: none;
     }
 
     .el-menu-item-center {
         justify-content: center;
+        border-radius: 12px;
+        background: transparent !important;
+        color: #506274;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .el-menu-item-center:hover {
+        background: rgba(160, 207, 255, 0.18) !important;
+        color: #2d5f90 !important;
+    }
+
+    .el-menu-item-center.is-active {
+        color: #2368a2 !important;
+        background: linear-gradient(135deg, #dcedff 0%, #eef7ff 100%) !important;
     }
 }
 </style>

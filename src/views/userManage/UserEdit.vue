@@ -18,6 +18,9 @@
             <el-form-item label="用户名" prop="username">
                 <el-input v-model="userForm.username" />
             </el-form-item>
+            <el-form-item label="邮箱" prop="email">
+                <el-input v-model="userForm.email" />
+            </el-form-item>
             <el-form-item label="昵称" prop="nickname">
                 <el-input v-model="userForm.nickname" />
             </el-form-item>
@@ -75,12 +78,6 @@
                 />
             </el-form-item>
 
-            <el-form-item label="邮箱" prop="email">
-                <el-input v-model="userForm.email" />
-            </el-form-item>
-            <el-form-item label="手机号" prop="mobile">
-                <el-input v-model="userForm.mobile" />
-            </el-form-item>
             <el-form-item label="个性签名" prop="description">
                 <el-input v-model="userForm.description" type="textarea" />
             </el-form-item>
@@ -109,7 +106,7 @@
 </template>
 
 <script lang="js" setup>
-import { defineProps, toRef, ref, reactive, defineEmits, onBeforeUnmount, computed } from 'vue'
+import { defineProps, toRef, ref, reactive, defineEmits, onBeforeUnmount, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { userInfoGet, userInfoPut } from '@/apis/userApis.js'
 import { user_authority } from '@/common/plugins/user_config.js'
@@ -281,7 +278,6 @@ let userForm = reactive({
     auth: '',
     avatar: '',
     nickname: '',
-    mobile: '',
     description: '',
     oldPassword: '',
     newPassword: '',
@@ -368,6 +364,10 @@ const userRules = reactive({
         { required: true, message: '请输入用户名', trigger: 'blur' },
         { min: 2, max: 16, message: '用户名长度应为 2-16 个字符', trigger: 'blur' },
     ],
+    email: [
+        { required: true, message: '请输入邮箱', trigger: 'blur' },
+        { type: 'email', message: '邮箱格式不正确', trigger: ['blur', 'change'] },
+    ],
     oldPassword: [{ validator: validateOldPassword, trigger: 'blur' }],
     newPassword: [{ validator: validateNewPassword, trigger: 'blur' }],
     confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }],
@@ -431,7 +431,14 @@ const findDifProperties = (o, u) => {
     return diffObj
 }
 
-getUserInfo()
+watch(
+    [() => visible.value.attr, () => userId.value],
+    ([isOpen]) => {
+        if (isOpen) {
+            getUserInfo()
+        }
+    }
+)
 </script>
 
 <style lang="scss">
