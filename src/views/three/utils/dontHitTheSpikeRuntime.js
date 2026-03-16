@@ -202,6 +202,8 @@ function createSceneRuntime({ mountEl, player, playerRadius, ceilingY, lightY, l
 export function createDontHitTheSpikeRuntime(state) {
   const {
     mountEl,
+    onReady,
+    onSpeedChange,
     score,
     lastScore,
     showLose,
@@ -238,6 +240,7 @@ export function createDontHitTheSpikeRuntime(state) {
   let hitTimeoutId = 0;
   let lastFrameTs = 0;
   let startRequested = false;
+  let readyFired = false;
   let panSpeed = basePanSpeed;
   let laneIndex = 1;
   let collisionStartIndex = 0;
@@ -248,6 +251,14 @@ export function createDontHitTheSpikeRuntime(state) {
   const flipVisual = { t: 0 };
   let flipTween = null;
   const cleanupFns = [];
+
+  const markReady = () => {
+    if (destroyed || readyFired) return;
+    readyFired = true;
+    requestAnimationFrame(() => {
+      if (!destroyed) onReady?.();
+    });
+  };
 
   const sceneRuntime = createSceneRuntime({
     mountEl,
@@ -280,6 +291,7 @@ export function createDontHitTheSpikeRuntime(state) {
     recordError.value = "";
     lastScoreTime.value = "";
     panSpeed = basePanSpeed;
+    onSpeedChange?.(panSpeed);
     lastFrameTs = 0;
     collisionStartIndex = 0;
     laneIndex = resetPlayerState(player, lanes, minY, playerZ);
@@ -337,6 +349,7 @@ export function createDontHitTheSpikeRuntime(state) {
     });
     collisionStartIndex = collisionResult.collisionStartIndex;
     panSpeed = Math.min(maxPanSpeed, panSpeed + speedAccelPerSecond * dt);
+    onSpeedChange?.(panSpeed);
 
     if (collisionResult.dead) {
       handleDeath();
@@ -450,6 +463,7 @@ export function createDontHitTheSpikeRuntime(state) {
   cleanupFns.push(() => sceneRuntime.dispose());
 
   render();
+  markReady();
 
   return {
     requestStart() {

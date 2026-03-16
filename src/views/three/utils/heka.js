@@ -6,7 +6,7 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
 import { Water } from 'three/addons/objects/Water2.js'
 import { TWEEN } from 'three/addons/libs/tween.module.min.js'
 
-export function islandInit({ mountEl, textEl }) {
+export function islandInit({ mountEl, textEl, onReady }) {
   const container = mountEl?.value
   const textContainer = textEl?.value
   if (!container || !textContainer) return { destroy() {} }
@@ -16,6 +16,7 @@ export function islandInit({ mountEl, textEl }) {
   let destroyed = false
   let resizeRafId = 0
   let wheelLocked = false
+  let readyFired = false
 
   const cleanupFns = []
   const trackedTextures = []
@@ -50,6 +51,14 @@ export function islandInit({ mountEl, textEl }) {
   const trackTexture = (texture) => {
     trackedTextures.push(texture)
     return texture
+  }
+
+  const markReady = () => {
+    if (destroyed || readyFired) return
+    readyFired = true
+    requestAnimationFrame(() => {
+      if (!destroyed) onReady?.()
+    })
   }
 
   const scenes = [
@@ -192,9 +201,12 @@ export function islandInit({ mountEl, textEl }) {
     rafId = requestAnimationFrame(animate)
   }
 
-  const initModel = () => {
+  const initModel = () => new Promise((resolve) => {
     gltfLoader.load('/models/threeJsModels/scene.glb', (gltf) => {
-      if (destroyed) return
+      if (destroyed) {
+        resolve()
+        return
+      }
       const model = gltf.scene
       model.traverse((child) => {
         if (child.name === 'Plane') child.visible = false
@@ -204,21 +216,28 @@ export function islandInit({ mountEl, textEl }) {
         }
       })
       scene.add(model)
+      resolve()
+    }, undefined, () => {
+      resolve()
     })
-  }
+  })
 
-  const initEnvironment = () => {
+  const initEnvironment = () => new Promise((resolve) => {
     rgbeLoader.load('/models/textures/sky.hdr', (texture) => {
       if (destroyed) {
         texture.dispose()
+        resolve()
         return
       }
       trackTexture(texture)
       texture.mapping = THREE.EquirectangularReflectionMapping
       scene.background = texture
       scene.environment = texture
+      resolve()
+    }, undefined, () => {
+      resolve()
     })
-  }
+  })
 
   const initWater = () => {
     const waterGeometry = trackGeometry(new THREE.CircleGeometry(10000, 180))
@@ -341,6 +360,11 @@ export function islandInit({ mountEl, textEl }) {
 
   controls.enableDamping = true
   controls.dampingFactor = 0.05
+  controls.enablePan = false
+  controls.minDistance = 4
+  controls.maxDistance = 38
+  controls.minPolarAngle = Math.PI * 0.18
+  controls.maxPolarAngle = Math.PI * 0.48
   controls.target.set(0, 0, 0)
   controls.update()
 
@@ -349,13 +373,16 @@ export function islandInit({ mountEl, textEl }) {
 
   setTextItems()
   changeText()
-  initModel()
-  initEnvironment()
   initWater()
   initLights()
   initStars()
   resize()
   animate()
+  Promise.all([initModel(), initEnvironment()]).finally(() => {
+    if (destroyed) return
+    renderer.render(scene, camera)
+    markReady()
+  })
 
   container.addEventListener('wheel', onWheel, { passive: true })
   window.addEventListener('resize', scheduleResize)

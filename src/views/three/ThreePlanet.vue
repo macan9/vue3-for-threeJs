@@ -4,12 +4,15 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
+const loadingManager = new THREE.LoadingManager()
+
 const containerRef = ref(null)
 const labelLayerRef = ref(null)
-const hoveredPlanet = ref('太阳')
+const isLoading = ref(true)
+const hoveredPlanet = ref('/textures/sun_color.jpg')
 
 const scene = new THREE.Scene()
-scene.fog = new THREE.FogExp2(0x020617, 0.00045)
+scene.fog = new THREE.FogExp2(0x01030a, 0.00062)
 
 const sceneRoot = new THREE.Group()
 scene.add(sceneRoot)
@@ -18,7 +21,7 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 4000)
 camera.position.set(-120, 68, 160)
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-renderer.setClearColor(new THREE.Color(0x020617))
+renderer.setClearColor(new THREE.Color(0x01030a))
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
 renderer.outputEncoding = THREE.sRGBEncoding
 
@@ -31,8 +34,8 @@ orbitControls.minDistance = 25
 orbitControls.maxDistance = 320
 orbitControls.target.set(0, 8, 0)
 
-const textureLoader = new THREE.TextureLoader()
-const rgbeLoader = new RGBELoader()
+const textureLoader = new THREE.TextureLoader(loadingManager)
+const rgbeLoader = new RGBELoader(loadingManager)
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 const clock = new THREE.Clock()
@@ -42,6 +45,7 @@ const planetBodies = []
 const disposableGeometries = []
 const disposableMaterials = []
 const disposableTextures = []
+let sceneReady = false
 
 const planetsConfiguration = [
   { name: '太阳', radius: 14, distance: 0, rotationSpeed: 0.0025, orbitSpeed: 0, mapImg: '/textures/sun_color.jpg', emissive: 0xffb347 },
@@ -55,15 +59,36 @@ const planetsConfiguration = [
   { name: '海王星', radius: 2.9, distance: 140, rotationSpeed: 0.015, orbitSpeed: 0.14, mapImg: '/textures/neptune_color.jpg' },
 ]
 
-const selectedPlanetInfo = computed(() => {
-  const target = planetBodies.find((item) => item.config.name === hoveredPlanet.value)
+const planetBriefs = {
+  '/textures/sun_color.jpg': '\u592a\u9633\u662f\u592a\u9633\u7cfb\u6838\u5fc3\uff0c\u91ca\u653e\u5149\u548c\u70ed\u9a71\u52a8\u884c\u661f\u73af\u5883\u3002',
+  '/textures/mercury_color.jpg': '\u6c34\u661f\u79bb\u592a\u9633\u6700\u8fd1\uff0c\u663c\u591c\u6e29\u5dee\u6781\u7aef\uff0c\u51e0\u4e4e\u6ca1\u6709\u5927\u6c14\u3002',
+  '/textures/venus_color.jpg': '\u91d1\u661f\u6d53\u5bc6\u4e8c\u6c27\u5316\u78b3\u5927\u6c14\u8ba9\u8868\u9762\u5f02\u5e38\u7099\u70ed\u3002',
+  '/textures/earth_color.jpg': '\u5730\u7403\u6db2\u6001\u6c34\u4e30\u5bcc\uff0c\u662f\u76ee\u524d\u5df2\u77e5\u552f\u4e00\u6709\u751f\u547d\u884c\u661f\u3002',
+  '/textures/mars_color.jpg': '\u706b\u661f\u5bd2\u51b7\u5e72\u71e5\uff0c\u4fdd\u7559\u53e4\u8001\u6cb3\u9053\u4e0e\u98ce\u8680\u5730\u8c8c\u3002',
+  '/textures/jupiter_color.jpg': '\u6728\u661f\u6700\u5927\uff0c\u5f3a\u98ce\u66b4\u6d3b\u8dc3\uff0c\u5927\u7ea2\u6591\u6301\u7eed\u6570\u767e\u5e74\u3002',
+  '/textures/saturn_color.jpg': '\u571f\u661f\u4ee5\u58ee\u89c2\u73af\u7cfb\u8457\u540d\uff0c\u5e73\u5747\u5bc6\u5ea6\u4f4e\u4e8e\u6c34\u3002',
+  '/textures/uranus_color.jpg': '\u5929\u738b\u661f\u81ea\u8f6c\u8f74\u51e0\u4e4e\u8eba\u5e73\uff0c\u5448\u72ec\u7279\u4fa7\u8eba\u59ff\u6001\u3002',
+  '/textures/neptune_color.jpg': '\u6d77\u738b\u661f\u8fdc\u79bb\u592a\u9633\uff0c\u62e5\u6709\u592a\u9633\u7cfb\u6700\u5feb\u7684\u9ad8\u7a7a\u98ce\u3002',
+}
+
+const planetNames = {
+  '/textures/sun_color.jpg': '\u592a\u9633',
+  '/textures/mercury_color.jpg': '\u6c34\u661f',
+  '/textures/venus_color.jpg': '\u91d1\u661f',
+  '/textures/earth_color.jpg': '\u5730\u7403',
+  '/textures/mars_color.jpg': '\u706b\u661f',
+  '/textures/jupiter_color.jpg': '\u6728\u661f',
+  '/textures/saturn_color.jpg': '\u571f\u661f',
+  '/textures/uranus_color.jpg': '\u5929\u738b\u661f',
+  '/textures/neptune_color.jpg': '\u6d77\u738b\u661f',
+}
+
+const hoveredPlanetName = computed(() => planetNames[hoveredPlanet.value] || '\u592a\u9633')
+
+const selectedPlanetSummary = computed(() => {
+  const target = planetBodies.find((item) => item.config.mapImg === hoveredPlanet.value)
   if (!target) return null
-
-  if (!target.config.distance) {
-    return '恒星核心，提供整套场景主光源。'
-  }
-
-  return `轨道半径 ${target.config.distance} / 自转 ${target.config.rotationSpeed.toFixed(3)} / 公转 ${target.config.orbitSpeed.toFixed(2)}`
+  return planetBriefs[target.config.mapImg] || null
 })
 
 function trackGeometry(geometry) {
@@ -86,9 +111,9 @@ function loadTexture(path) {
 }
 
 function createLights() {
-  const ambientLight = new THREE.AmbientLight(0x8fb0ff, 0.18)
-  const pointLight = new THREE.PointLight(0xffffff, 2.4, 0, 0)
-  const haloLight = new THREE.PointLight(0xff9d4d, 1.2, 180)
+  const ambientLight = new THREE.AmbientLight(0x8fb0ff, 0.11)
+  const pointLight = new THREE.PointLight(0xffffff, 2.0, 0, 0)
+  const haloLight = new THREE.PointLight(0xff9d4d, 0.95, 180)
 
   pointLight.position.set(0, 0, 0)
   haloLight.position.set(0, 0, 0)
@@ -99,11 +124,16 @@ function createLights() {
 }
 
 function createUniverse() {
-  rgbeLoader.load('/models/textures/sky.hdr', (texture) => {
-    trackTexture(texture)
-    texture.mapping = THREE.EquirectangularReflectionMapping
-    scene.background = texture
-    scene.environment = texture
+  return new Promise((resolve) => {
+    rgbeLoader.load('/models/textures/sky.hdr', (texture) => {
+      trackTexture(texture)
+      texture.mapping = THREE.EquirectangularReflectionMapping
+      scene.background = texture
+      scene.environment = texture
+      resolve()
+    }, undefined, () => {
+      resolve()
+    })
   })
 }
 
@@ -222,7 +252,7 @@ function createPlanets() {
     const mesh = new THREE.Mesh(geometry, material)
 
     mesh.position.set(config.distance, 0, 0)
-    mesh.userData.name = config.name
+    mesh.userData.name = config.mapImg
     pivot.add(mesh)
     sceneRoot.add(pivot)
 
@@ -249,7 +279,7 @@ function createPlanets() {
     const labelEl = document.createElement('button')
     labelEl.type = 'button'
     labelEl.className = 'planet-label'
-    labelEl.textContent = config.name
+    labelEl.textContent = planetNames[config.mapImg] || config.name
     labelEl.addEventListener('click', () => focusPlanet(body))
     labelLayerRef.value?.appendChild(labelEl)
 
@@ -259,7 +289,7 @@ function createPlanets() {
 }
 
 function focusPlanet(body) {
-  hoveredPlanet.value = body.config.name
+  hoveredPlanet.value = body.config.mapImg
   orbitControls.target.copy(body.mesh.position)
 }
 
@@ -314,7 +344,7 @@ function updateLabels() {
 
     el.style.opacity = '1'
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`
-    el.classList.toggle('is-active', hoveredPlanet.value === body.config.name)
+    el.classList.toggle('is-active', hoveredPlanet.value === body.config.mapImg)
   })
 }
 
@@ -372,6 +402,12 @@ function animate() {
   orbitControls.update()
   updateLabels()
   renderer.render(scene, camera)
+  if (!sceneReady) {
+    sceneReady = true
+    requestAnimationFrame(() => {
+      isLoading.value = false
+    })
+  }
   animationId = requestAnimationFrame(animate)
 }
 
@@ -401,6 +437,10 @@ function init() {
   const container = containerRef.value
   if (!container) return
 
+  loadingManager.onLoad = () => {
+    animate()
+  }
+
   createLights()
   createUniverse()
   createStarField()
@@ -411,8 +451,6 @@ function init() {
   container.appendChild(renderer.domElement)
   renderer.domElement.addEventListener('pointermove', onPointerMove)
   renderer.domElement.addEventListener('click', onCanvasClick)
-
-  animate()
 }
 
 onMounted(() => {
@@ -430,12 +468,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" class="planet-container">
+  <div ref="containerRef" class="planet-container" :class="{ 'is-ready': !isLoading }">
+    <div class="planet-vignette"></div>
+    <div class="three-loading" :class="{ 'is-hidden': !isLoading }">
+      <div class="three-loading-spinner"></div>
+      <p>正在构建太阳系场景...</p>
+    </div>
     <div class="planet-overlay">
       <div class="planet-panel">
         <p class="planet-eyebrow">Solar System</p>
-        <h2>{{ hoveredPlanet }}</h2>
-        <p>{{ selectedPlanetInfo }}</p>
+        <h2>{{ hoveredPlanetName }}</h2>
+        <p>{{ selectedPlanetSummary }}</p>
       </div>
     </div>
     <div ref="labelLayerRef" class="label-layer"></div>
@@ -451,7 +494,48 @@ onUnmounted(() => {
   background:
     radial-gradient(circle at top, rgba(59, 130, 246, 0.14), transparent 36%),
     radial-gradient(circle at bottom, rgba(249, 115, 22, 0.1), transparent 28%),
-    #020617;
+    #040817;
+}
+
+.three-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.14), transparent 32%),
+    rgba(2, 6, 23, 0.9);
+  color: #e2e8f0;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.three-loading.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.three-loading-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-top-color: #7dd3fc;
+  border-radius: 50%;
+  animation: three-spin 0.9s linear infinite;
+}
+
+.planet-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 35%, transparent 0%, rgba(1, 3, 10, 0.16) 42%, rgba(1, 3, 10, 0.52) 100%),
+    linear-gradient(180deg, rgba(1, 3, 10, 0.12), rgba(1, 3, 10, 0.48));
 }
 
 .planet-overlay {
@@ -523,6 +607,12 @@ onUnmounted(() => {
 
 canvas {
   display: block;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.planet-container.is-ready canvas {
+  opacity: 1;
 }
 
 @media (max-width: 768px) {
@@ -541,6 +631,12 @@ canvas {
 
   .planet-panel h2 {
     font-size: 24px;
+  }
+}
+
+@keyframes three-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

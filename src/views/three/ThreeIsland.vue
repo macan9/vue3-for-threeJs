@@ -6,7 +6,12 @@
         <h2>海岛场景演示</h2>
       </div>
 
-      <div ref="mountEl" class="webThree">
+      <div class="three-loading" :class="{ 'is-hidden': !isLoading }">
+        <div class="three-loading-spinner"></div>
+        <p>正在加载海岛场景...</p>
+      </div>
+
+      <div ref="mountEl" class="webThree" :class="{ 'is-ready': !isLoading }">
         <div class="ulBox">
           <div ref="textEl" class="liBox"></div>
         </div>
@@ -20,12 +25,16 @@ import { onMounted, onUnmounted, ref } from 'vue'
 
 const mountEl = ref(null)
 const textEl = ref(null)
+const isLoading = ref(true)
 let islandRuntime = null
 
 onMounted(() => {
   islandRuntime = islandInit({
     mountEl,
     textEl,
+    onReady: () => {
+      isLoading.value = false
+    },
   })
 })
 
@@ -52,10 +61,42 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.three-loading {
+  position: absolute;
+  inset: 18px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top, rgba(125, 211, 252, 0.16), transparent 34%),
+    rgba(2, 6, 23, 0.88);
+  color: #e2e8f0;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.three-loading.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.three-loading-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #7dd3fc;
+  border-radius: 50%;
+  animation: three-spin 0.9s linear infinite;
+}
+
 .three-island-head {
   position: absolute;
-  top: 18px;
-  left: 18px;
+  top: 28px;
+  left: 28px;
   z-index: 3;
   padding: 14px 16px;
   border-radius: 18px;
@@ -86,6 +127,12 @@ onUnmounted(() => {
   overflow: hidden;
   border-radius: 20px;
   background: #020617;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.webThree.is-ready {
+  opacity: 1;
 }
 
 .webThree canvas {
@@ -127,9 +174,9 @@ onUnmounted(() => {
   }
 
   .three-island-head {
-    top: 12px;
-    left: 12px;
-    max-width: calc(100% - 24px);
+    top: 18px;
+    left: 18px;
+    max-width: calc(100% - 36px);
   }
 
   .three-island-head h2 {
@@ -142,6 +189,17 @@ onUnmounted(() => {
 
   .liBox h1 {
     padding-left: 18px;
+  }
+
+  .three-loading {
+    inset: 12px;
+    border-radius: 16px;
+  }
+}
+
+@keyframes three-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

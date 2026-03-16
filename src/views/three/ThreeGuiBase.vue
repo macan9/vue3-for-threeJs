@@ -1,10 +1,12 @@
 <script setup>
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import * as dat from 'dat.gui'
 // import * as Stats from 'stats.js'
 import { ElMessage } from 'element-plus'
 import createGeometry from './utils/createGeometry.js'
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
+const isLoading = ref(true)
 let renderLoop = false
 let rafId = null
 let scene = null // 场景
@@ -19,6 +21,8 @@ let sphere2 = null // 球体
 let sphere3 = null // 球体
 // let gui = null // 参数调节器
 // let stats = null // fps状态
+let controls = null
+
 const guiConfiguration = {
   message: '哈喽啊~我是荣顶',
   cubeSpeed: 0.03,
@@ -168,7 +172,7 @@ function createRenderer() {
   // 设置场景大小
   renderer.setSize(window.innerWidth, window.innerHeight - 60)
   // 设置相机位置(x,y,z)
-  camera.position.set(-100, 40, 100)
+  camera.position.set(300, 300, 0)
   // 通过lookAt将摄像机指向场景中心,(默认指向0,0,0)
   camera.lookAt(scene.position)
   // 开启阴影
@@ -176,12 +180,26 @@ function createRenderer() {
   // 将渲染结果添加到dom元素中
   const container = document.getElementById('webgl-output')
   if (container) {
-    // 避免重复进入路由时叠加多个 canvas
-    container.innerHTML = ''
+    const oldCanvas = container.querySelector('canvas')
+    if (oldCanvas?.parentNode) oldCanvas.parentNode.removeChild(oldCanvas)
     container.appendChild(renderer.domElement)
   }
   // 使用指定的摄像机来渲染场景
   renderer.render(scene, camera)
+  controls = new OrbitControls(camera, renderer.domElement)
+  controls.enableDamping = true
+  controls.dampingFactor = 0.06
+  controls.enablePan = false
+  controls.minPolarAngle = Math.PI * 0.31
+  controls.maxPolarAngle = Math.PI * 0.31
+  controls.minDistance = 46
+  controls.maxDistance = 150
+  controls.target.set(0, 8, 0)
+  controls.update()
+  renderer.render(scene, camera)
+  requestAnimationFrame(() => {
+    isLoading.value = false
+  })
 }
 
 // 执行动画
@@ -204,6 +222,7 @@ function animate() {
   sphere3.position.x = 40 * Math.cos(guiConfiguration.sphereInitVelocity - 0.9)
   sphere3.position.z = 40 * Math.sin(guiConfiguration.sphereInitVelocity - 0.9)
 //   console.log(scene, camera,'---scene, camera---')
+  controls?.update()
   renderer.render(scene, camera)
   if (renderLoop) rafId = requestAnimationFrame(animate)
 }
@@ -251,6 +270,8 @@ function disposeThree() {
 
   scene = null
   camera = null
+  controls?.dispose?.()
+  controls = null
   axes = null
   plane = null
   spotLight = null
@@ -311,14 +332,23 @@ function disposeThree() {
 //     createSphere()
 //   })
 // }
+function onResize() {
+  if (!renderer || !camera) return
+  renderer.setSize(window.innerWidth, window.innerHeight - 60)
+  camera.aspect = window.innerWidth / (window.innerHeight - 60)
+  camera.updateProjectionMatrix()
+}
+
 onMounted(() => {
   init()
+  window.addEventListener('resize', onResize)
   renderLoop = true
   animate()
 //   getStats()
 //   configGUI()
 })
 onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
   disposeThree()
   // const guiDom = gui.domElement
   // guiDom.parentNode.removeChild(guiDom)
@@ -329,10 +359,60 @@ onUnmounted(() => {
 </script>
 <template>
   <!-- <FilepathBox file-path="__filePath__" /> -->
-  <div id="webgl-output"></div>
+  <div id="webgl-output" :class="{ 'is-ready': !isLoading }">
+    <div class="three-loading" :class="{ 'is-hidden': !isLoading }">
+      <div class="three-loading-spinner"></div>
+      <p>正在初始化场景演示...</p>
+    </div>
+  </div>
 </template>
 <style scoped lang="scss">
 #webgl-output {
+  position: relative;
   height: 100%;
+}
+
+#webgl-output :deep(canvas) {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+#webgl-output.is-ready :deep(canvas) {
+  opacity: 1;
+}
+
+.three-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.88);
+  color: #fff;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.three-loading.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.three-loading-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #7dd3fc;
+  border-radius: 50%;
+  animation: three-spin 0.9s linear infinite;
+}
+
+@keyframes three-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
