@@ -52,7 +52,7 @@
 </template>
 
 <script lang="js" setup>
-  import { defineProps, toRef, ref, reactive, onMounted } from 'vue'
+  import { defineProps, toRef, ref, reactive, watch } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { registerReq, getCaptcha } from '@/apis/userApis.js'
   // import { user_authority } from '@/common/plugins/user_config.js'
@@ -166,9 +166,14 @@
     ],
   })
 
-  onMounted(() => {
-    loadCaptcha()
-  })
+  watch(
+    () => visible.value.attr,
+    (isOpen) => {
+      if (isOpen) {
+        loadCaptcha()
+      }
+    }
+  )
 
   
 
