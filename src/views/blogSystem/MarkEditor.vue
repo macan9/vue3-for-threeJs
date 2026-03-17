@@ -9,7 +9,7 @@
 </template>
 <script setup>
 	import { ref, onMounted } from "vue";
-	import { uploadUserAvatarReq } from '@/apis/userApis.js'
+	import { uploadUserAvatarReq } from '@/apis/giteeApis.js'
 	import { ElMessage } from 'element-plus'
 	import Vditor from "vditor";
 	import "vditor/dist/index.css";

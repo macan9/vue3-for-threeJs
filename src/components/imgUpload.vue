@@ -50,7 +50,7 @@
     import { ref, reactive } from 'vue'
     import { ElMessage } from 'element-plus'
     import { Plus } from '@element-plus/icons-vue'
-    import { uploadUserAvatarReq,getGiteeImgList,delGiteeImg } from '@/apis/userApis.js'
+    import { uploadUserAvatarReq,getGiteeImgList,delGiteeImg } from '@/apis/giteeApis.js'
     import GiteeSetting from '@/components/GiteeSetting.vue'
 
     const dialogImageUrl = ref('')
