@@ -1,5 +1,14 @@
 <template>
-  <section class="fireworks-page home-view-page" :style="pageBackgroundStyle">
+  <section
+    class="fireworks-page home-view-page"
+    @dblclick="handleBurst"
+  >
+    <img
+      class="fireworks-bg"
+      :src="backgroundImage"
+      alt="background"
+    >
+
     <canvas
       ref="canvasRef"
       class="fireworks-canvas"
@@ -7,30 +16,7 @@
     />
 
     <div class="fireworks-mask" />
-
-    <!-- <div class="fireworks-panel">
-      <p class="panel-tag">Canvas Fireworks</p>
-      <h1 class="panel-title">烟花夜景</h1>
-      <p class="panel-desc">
-        该页面已从 jQuery 插件式实现改为 Vue 单文件组件。保留火箭升空、空中爆炸、粒子衰减和拖尾残影等主体效果，
-        并通过 Vue 生命周期统一管理动画帧、定时器和窗口尺寸变化。
-      </p>
-
-      <div class="panel-actions">
-        <button type="button" class="primary-btn" @click="launchBurst">
-          中央齐放
-        </button>
-        <button type="button" class="ghost-btn" @click="toggleAutoLaunch">
-          {{ autoLaunch ? '停止自动发射' : '开启自动发射' }}
-        </button>
-      </div>
-
-      <div class="panel-metrics">
-        <span>火箭 {{ rocketsCount }}</span>
-        <span>粒子 {{ particlesCount }}</span>
-        <span>点击页面可追加发射</span>
-      </div>
-    </div> -->
+    
   </section>
 </template>
 
@@ -47,9 +33,7 @@ const canvasRef = ref(null)
 const rocketsCount = ref(0)
 const particlesCount = ref(0)
 const autoLaunch = ref(true)
-const pageBackgroundStyle = computed(() => ({
-  backgroundImage: `linear-gradient(rgba(3, 8, 18, 0.28), rgba(3, 8, 18, 0.7)), url(${process.env.BASE_URL}img/background/bg.png)`,
-}))
+const backgroundImage = computed(() => `${process.env.BASE_URL}img/background/bg.png`)
 
 const rockets = []
 const particles = []
@@ -286,11 +270,6 @@ function restartAutoLaunch() {
   }, autoLaunchInterval.value)
 }
 
-function toggleAutoLaunch() {
-  autoLaunch.value = !autoLaunch.value
-  restartAutoLaunch()
-}
-
 function handleLaunch(event) {
   const x = event.clientX
   launchRocket(x)
@@ -298,6 +277,10 @@ function handleLaunch(event) {
   if (Math.random() > 0.45) {
     launchRocket(x + randomBetween(-40, 40))
   }
+}
+
+function handleBurst() {
+  launchBurst()
 }
 
 onMounted(() => {
@@ -337,9 +320,17 @@ onBeforeUnmount(() => {
   position: relative;
   height: 100%;
   overflow: hidden;
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: #040812;
+}
+
+.fireworks-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
 }
 
 .fireworks-canvas,
@@ -360,20 +351,6 @@ onBeforeUnmount(() => {
   background:
     radial-gradient(circle at top, rgba(255, 204, 124, 0.14), transparent 30%),
     radial-gradient(circle at 80% 20%, rgba(71, 135, 255, 0.16), transparent 24%);
-}
-
-.fireworks-panel {
-  position: relative;
-  z-index: 2;
-  width: min(520px, calc(100% - 32px));
-  margin: 28px;
-  padding: 28px 30px;
-  color: #f3f7ff;
-  border: 1px solid rgba(183, 211, 255, 0.16);
-  border-radius: 26px;
-  background: rgba(8, 18, 38, 0.48);
-  box-shadow: 0 24px 44px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(14px);
 }
 
 .panel-tag {
@@ -420,10 +397,6 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #ff9a4a 0%, #ff4f7b 100%);
 }
 
-.ghost-btn {
-  background: rgba(159, 191, 255, 0.18);
-}
-
 .panel-metrics {
   display: flex;
   flex-wrap: wrap;
@@ -433,10 +406,5 @@ onBeforeUnmount(() => {
   color: rgba(209, 224, 255, 0.78);
 }
 
-@media (max-width: 768px) {
-  .fireworks-panel {
-    margin: 16px;
-    padding: 22px 20px;
-  }
-}
+
 </style>
