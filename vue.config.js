@@ -48,7 +48,7 @@ module.exports = defineConfig({
   css: {
     loaderOptions: {
       scss: { 
-        additionalData: ` @use '@/assets/styles/main' as main;`,
+        // additionalData: ` @use '@/assets/styles/main' as main;`, // 引入公共样式变量 不要引入样式文件，否则会重复引入导致样式冲突
       },
     },
   },

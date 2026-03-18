@@ -121,8 +121,8 @@ const props = defineProps({
     default: () => {},
   },
   userId: {
-    type: Number,
-    default: 0,
+    type: [Number, String],
+    default: '',
   },
 })
 
@@ -137,6 +137,7 @@ const userRuleFormRef = ref(null)
 const currentUser = ref(getCurrentUserFromStorage())
 let avatarPreviewObjectUrl = ''
 let userOldData = {}
+let userInfoRequestId = 0
 
 const userForm = reactive({
   username: '',
@@ -310,16 +311,41 @@ const resetPasswordFields = () => {
   userForm.confirmPassword = ''
 }
 
+const resetUserForm = () => {
+  userOldData = {}
+  Object.assign(userForm, {
+    username: '',
+    email: '',
+    auth: '',
+    avatar: '',
+    nickname: '',
+    description: '',
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  cleanupAvatarPreview()
+}
+
 const getUserInfo = async () => {
+  const targetUserId = String(userId.value || '').trim()
+  if (!targetUserId) {
+    resetUserForm()
+    return
+  }
+
+  const requestId = ++userInfoRequestId
   try {
     currentUser.value = getCurrentUserFromStorage()
-    const { data } = await userInfoGet(userId.value)
+    const { data } = await userInfoGet(targetUserId)
+    if (requestId !== userInfoRequestId) return
     userOldData = data || {}
     Object.assign(userForm, data || {})
     resetPasswordFields()
   } catch (error) {
+    if (requestId !== userInfoRequestId) return
     console.error('getUserInfo failed', error)
-    userOldData = {}
+    resetUserForm()
     resetPasswordFields()
   }
 }
@@ -436,11 +462,18 @@ const submitUser = async (formEl) => {
 
 watch(
   [() => visible.value.attr, () => userId.value],
-  ([isOpen]) => {
-    if (isOpen) {
+  ([isOpen, nextUserId], [prevIsOpen, prevUserId]) => {
+    const normalizedUserId = String(nextUserId || '').trim()
+    if (isOpen && normalizedUserId && (!prevIsOpen || String(prevUserId || '').trim() !== normalizedUserId)) {
       getUserInfo()
     }
-  }
+
+    if (!isOpen && prevIsOpen) {
+      userInfoRequestId += 1
+      resetUserForm()
+    }
+  },
+  { immediate: true }
 )
 </script>
 

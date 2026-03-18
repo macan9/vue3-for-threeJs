@@ -10,7 +10,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 // 使用 mock
 // require('./common/mock/index.js') 
 
-
+import '@/assets/styles/main.scss'
 
 // 定义 app 
 const app = createApp(App)

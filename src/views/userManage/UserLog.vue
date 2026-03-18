@@ -6,7 +6,6 @@
 
         <div class="user-main">
             <div class="user-header">
-                <el-button size="small" type="success" @click="UpDateInfo()">刷新日志</el-button>
                 <div class="time-filter">
                     <span>时间筛选：</span>
                     <el-date-picker
@@ -15,11 +14,14 @@
                         start-placeholder="开始时间"
                         end-placeholder="结束时间"
                         :default-time="defaultTime"
-                        size="small"
                     />
                 </div>
+                <div class="header-actions">
+                    <el-button type="primary" @click="UpDateInfo()">刷新日志</el-button>
+                </div>
             </div>
-            <el-table :data="filterTableData" style="width: 100%">
+            <div class="table-wrap">
+            <el-table :data="filterTableData" height="100%" style="width: 100%">
                 <el-table-column label="用户名" prop="username" width="180" />
                 <el-table-column label="IP 地址" prop="ip" width="180" />
                 <el-table-column label="操作系统" prop="os" width="200" />
@@ -29,12 +31,13 @@
                         {{ scope.row.status ? "登录成功" : "登录失败" }}
                     </template>
                 </el-table-column>
-                <el-table-column label="失败原因" prop="fail_reason" min-width="260" show-overflow-tooltip>
+                <el-table-column label="失败原因" prop="fail_reason" min-width="160" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.fail_reason ? scope.row.fail_reason : "--" }}
                     </template>
                 </el-table-column>
             </el-table>
+            </div>
         </div>
 
         <div class="user-bottom">
@@ -138,7 +141,8 @@ const getUserLogData = async () => {
 
 const UpDateInfo = async () => {
     const code = await getUserLogData()
-    if (code == 0) {
+    console.log('getUserLogData code', code)
+    if (code == 200 || code == 304) {
         ElMessage({
             message: '刷新成功',
             type: 'success',
@@ -158,30 +162,109 @@ onMounted(() => {
 </script>
 <style lang="scss">
 .user-log {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     padding: 10px;
+
     .user-main {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
         padding: 15px;
     }
 
     .user-header {
         display: flex;
         align-items: center;
-        padding-left: 15px;
-        height: 40px;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 4px 6px 0;
+        flex-wrap: wrap;
     }
 
     .time-filter {
-        margin-left: 20px;
         display: flex;
         align-items: center;
         gap: 8px;
+        color: #5f7085;
+        flex: 0 0 auto;
+        min-width: 0;
+    }
+
+    .header-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .table-wrap {
+        flex: 1;
+        min-height: 0;
+        padding: 8px 6px 0;
+    }
+
+    :deep(.el-date-editor.el-input__wrapper),
+    :deep(.el-date-editor.el-range-editor.el-input__wrapper) {
+        width: 420px;
+        max-width: 100%;
+    }
+
+    :deep(.el-table) {
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    :deep(.el-table__inner-wrapper::before) {
+        display: none;
     }
 
     .user-bottom {
-        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin-top: auto;
+        min-height: 56px;
+        padding: 0 21px 16px;
+        border-top: 1px solid rgba(216, 226, 235, 0.8);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 250, 254, 0.96));
+    }
+
+    :deep(.el-pagination) {
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+
+    @media (max-width: 900px) {
+        .user-header {
+            align-items: stretch;
+        }
+
+        .time-filter {
+            width: 100%;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        :deep(.el-date-editor.el-input__wrapper),
+        :deep(.el-date-editor.el-range-editor.el-input__wrapper) {
+            width: 100%;
+        }
+
+        .header-actions {
+            margin-left: 0;
+            width: 100%;
+            justify-content: flex-end;
+        }
+
+        .user-bottom {
+            justify-content: center;
+            padding-inline: 12px;
+        }
     }
 }
 </style>

@@ -6,15 +6,20 @@
 
 		<div class="blog-main">
 			<div class="blog-header">
-				<el-button size="small" type="primary" @click="openCreate()">新增</el-button>
-				<el-button size="small" type="success" @click="getPostData()">刷新</el-button>
-				<el-input v-model="search" size="small" placeholder="输入标题过滤" style="max-width: 240px;" />
+				<div class="header-search">
+					<el-input v-model="search" placeholder="输入标题过滤" />
+				</div>
+				<div class="header-actions">
+					<el-button type="primary" @click="openCreate()">新增</el-button>
+					<el-button type="success" @click="getPostData()">刷新</el-button>
+				</div>
 			</div>
 
+			<div class="table-wrap">
 			<el-skeleton :loading="loading" animated :rows="6">
 				<template #default>
 					<el-empty v-if="!filterTableData.length" description="暂无文章" />
-					<el-table v-else :data="filterTableData" style="width: 100%">
+					<el-table v-else :data="filterTableData" height="100%" style="width: 100%">
 						<el-table-column label="标题" prop="title" min-width="240">
 							<template #default="scope">
 								<div class="post-title" :title="scope.row.title || '-'">
@@ -51,6 +56,7 @@
 					</el-table>
 				</template>
 			</el-skeleton>
+			</div>
 		</div>
 
 		<el-dialog v-model="createDialogVisible" title="新增博客" width="640px">
@@ -251,23 +257,95 @@ getPostData()
 </script>
 <style lang="scss">
 .BlogMain{
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
 	padding: 10px;
+
 	.blog-main{
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
 		padding: 15px;
 	}
+
 	.blog-header{
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding-left: 15px;
-		height: 40px;
-		margin-bottom: 10px;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 4px 6px 0;
+		flex-wrap: wrap;
 	}
+
+	.header-search {
+		flex: 0 0 auto;
+	}
+
+	.header-actions {
+		margin-left: auto;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 10px;
+		flex-wrap: wrap;
+	}
+
+	.table-wrap {
+		flex: 1;
+		min-height: 0;
+		padding: 8px 6px 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	:deep(.el-skeleton) {
+		flex: 1;
+		min-height: 0;
+	}
+
+	:deep(.el-empty) {
+		height: 100%;
+	}
+
+	:deep(.el-input) {
+		width: 280px;
+		max-width: 100%;
+	}
+
+	:deep(.el-table) {
+		border-radius: 18px;
+		overflow: hidden;
+	}
+
+	:deep(.el-table__inner-wrapper::before) {
+		display: none;
+	}
+
 	.post-title{
 		font-weight: 600;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	@media (max-width: 900px) {
+		.header-search {
+			width: 100%;
+		}
+
+		.header-actions {
+			margin-left: 0;
+			width: 100%;
+			justify-content: flex-end;
+		}
+
+		:deep(.el-input) {
+			width: 100%;
+		}
 	}
 }
 </style>
