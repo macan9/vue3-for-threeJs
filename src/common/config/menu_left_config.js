@@ -51,8 +51,8 @@ export const menu_left_config = [
             },
             {
                 label: '点位添加',
-                value: '2-2',
                 path: '/blogMain',
+                value: '2-2',
                 icon: 'Location',
             },
         ],
@@ -112,7 +112,7 @@ export const menu_left_config = [
         pid: '6',
         children: [
             {
-                label: '聊天房间',
+                label: '聊天室间',
                 value: '6-1',
                 path: '/blogMain',
                 icon: 'ChatDotRound',
@@ -129,16 +129,16 @@ export const menu_left_config = [
                 icon: 'StarFilled',
             },
             {
+                label: '烟花',
+                value: '7-2',
+                path: '/fireworks',
+                icon: 'Promotion',
+            },
+            {
                 label: '涂鸦跳跃',
                 value: '7-4',
                 path: '/blogMain',
                 icon: 'Pointer',
-            },
-            {
-                label: '烟花',
-                value: '7-2',
-                path: '/blogMain',
-                icon: 'Promotion',
             },
             {
                 label: '转盘',
@@ -149,4 +149,3 @@ export const menu_left_config = [
         ],
     },
 ]
-

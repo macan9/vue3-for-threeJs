@@ -54,6 +54,10 @@ const routes = [
         name: 'starSea',
         component: () => import('@/views/interestThing/StarSea.vue')
       }, {
+        path: '/fireworks',
+        name: 'fireworks',
+        component: () => import('@/views/interestThing/Fireworks.vue')
+      }, {
         path: '/markJsRender',
         name: 'markJsRender',
         component: () => import('@/views/blogSystem/MarkJsRender.vue')
