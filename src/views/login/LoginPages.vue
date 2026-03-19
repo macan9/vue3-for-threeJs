@@ -6,9 +6,9 @@
     <div class="login-orb orb-three"></div>
 
     <form method="post" class="box" @submit.prevent="handleSubmit">
-      <div class="login-badge">Three.js Blog</div>
-      <h1 class="login-title">用户登录</h1>
-      <p class="login-subtitle">进入浅色风格的创作后台，继续管理内容与资源。</p>
+      <div class="login-badge">Management System</div>
+      <h1 class="login-title">登录</h1>
+      <p class="login-subtitle">劝君惜取少年时。</p>
 
       <div class="form-item">
         <label class="form-label" for="login-username">用户名</label>

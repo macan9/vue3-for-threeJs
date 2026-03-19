@@ -1,7 +1,7 @@
 <template>
 	<div class="home-view-page BlogManage">
 		<div class="home-view-title">
-			<div class="page-title">博客列表</div>
+			<div class="page-title">博客管理</div>
 		</div>
 
 		<div class="blog-main">
@@ -20,7 +20,7 @@
 				<template #default>
 					<el-empty v-if="!filterTableData.length" description="暂无文章" />
 					<el-table v-else :data="filterTableData" height="100%" style="width: 100%">
-						<el-table-column label="标题" prop="title" min-width="240">
+						<el-table-column label="标题" prop="title" min-width="140">
 							<template #default="scope">
 								<div class="post-title" :title="scope.row.title || '-'">
 									{{ scope.row.title || '-' }}
@@ -37,7 +37,7 @@
 								{{ formatTime(scope.row.updated_at) }}
 							</template>
 						</el-table-column>
-						<el-table-column label="摘要" prop="summary" min-width="220" show-overflow-tooltip>
+						<el-table-column label="摘要" prop="summary" min-width="160" show-overflow-tooltip>
 							<template #default="scope">
 								{{ scope.row.summary || '-' }}
 							</template>

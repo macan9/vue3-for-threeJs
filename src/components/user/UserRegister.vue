@@ -8,7 +8,7 @@
   >
     <div class="register-head">
       <div class="register-badge">Create Account</div>
-      <p class="register-subtitle">保持和登录页一致的浅色体验，完成账号初始化。</p>
+      <p class="register-subtitle">请完成账号初始化。</p>
     </div>
 
     <el-form
@@ -53,7 +53,10 @@
       <el-form-item label="图形验证码" prop="captcha">
         <div class="captcha-row">
           <el-input v-model="userForm.captcha" placeholder="请输入验证码" />
-          <div class="captcha-preview">
+          
+        </div>
+      </el-form-item>
+      <div class="captcha-preview">
             <button type="button" class="captcha-card" @click="loadCaptcha">
               <img
                 v-if="captchaImg"
@@ -64,8 +67,6 @@
               <span class="captcha-text">点击刷新</span>
             </button>
           </div>
-        </div>
-      </el-form-item>
     </el-form>
 
     <template #footer>
@@ -326,6 +327,7 @@ watch(
   }
 
   .captcha-preview {
+    margin-left: 22%;
     display: flex;
     justify-content: flex-start;
   }

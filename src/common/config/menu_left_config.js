@@ -4,6 +4,12 @@ export const menu_left_config = [
         children: [
             {
                 label: '我的博客',
+                value: '1-7',
+                path: '/BlogMain',
+                icon: 'HomeFilled',
+            },
+            {
+                label: '博客管理',
                 value: '1-1',
                 path: '/blogManage?myBlog=1',
                 icon: 'HomeFilled',
@@ -26,18 +32,18 @@ export const menu_left_config = [
                 path: '/imgUpload',
                 icon: 'UploadFilled',
             },
-            {
-                label: 'MD 解析',
-                value: '1-5',
-                path: '/markJsRender',
-                icon: 'Notebook',
-            },
-            {
-                label: '富文本',
-                value: '1-6',
-                path: '/markEditor',
-                icon: 'EditPen',
-            },
+            // {
+            //     label: 'MD 解析',
+            //     value: '1-5',
+            //     path: '/markJsRender',
+            //     icon: 'Notebook',
+            // },
+            // {
+            //     label: '富文本',
+            //     value: '1-6',
+            //     path: '/markEditor',
+            //     icon: 'EditPen',
+            // },
         ],
     },
     {

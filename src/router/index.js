@@ -14,6 +14,11 @@ const routes = [
         component: () => import('@/views/blogSystem/BlogManage.vue')
       },
       {
+        path: '/BlogMain',
+        name: 'BlogMain',
+        component: () => import('@/views/blogSystem/BlogMain.vue')
+      },
+      {
         path: '/userEdit',
         name: 'userEdit',
         component: () => import('@/components/user/UserEdit.vue')
