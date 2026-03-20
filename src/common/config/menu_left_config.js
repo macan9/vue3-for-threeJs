@@ -141,6 +141,12 @@ export const menu_left_config = [
                 icon: 'Promotion',
             },
             {
+                label: '扭蛋机',
+                value: '7-3',
+                path: '/gashapon',
+                icon: 'Promotion',
+            },
+            {
                 label: '涂鸦',
                 value: '7-4',
                 path: '/blogManage',
@@ -148,7 +154,7 @@ export const menu_left_config = [
             },
             {
                 label: '转盘',
-                value: '7-3',
+                value: '7-5',
                 path: '/blogManage',
                 icon: 'Refresh',
             },

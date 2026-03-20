@@ -224,25 +224,6 @@ const closePreview = () => {
 	previewUrl.value = ''
 }
 
-const triggerDownload = (downloadUrl, fileName) => {
-	const link = document.createElement('a')
-	link.href = downloadUrl
-	link.download = fileName || 'download'
-	link.rel = 'noopener'
-	document.body.appendChild(link)
-	link.click()
-	document.body.removeChild(link)
-}
-
-const openFile = (item) => {
-	const targetUrl = getItemPreviewUrl(item)
-	if (!targetUrl) {
-		ElMessage.warning('当前文件没有可访问地址')
-		return
-	}
-	window.open(targetUrl, '_blank')
-}
-
 const writeTextToClipboard = async (text) => {
 	if (navigator?.clipboard?.writeText) {
 		await navigator.clipboard.writeText(text)
@@ -276,26 +257,13 @@ const copyFileUrl = async (item) => {
 }
 
 const downloadFile = async (item) => {
-	const targetUrl = getItemPreviewUrl(item)
-	if (!targetUrl) {
-		ElMessage.warning('当前文件没有可下载地址')
+	const downloadPath = item.relativePath || item.path
+	if (!downloadPath) {
+		ElMessage.warning('当前文件缺少下载路径')
 		return
 	}
 
-	try {
-		const response = await fetch(targetUrl)
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}`)
-		}
-
-		const blob = await response.blob()
-		const blobUrl = URL.createObjectURL(blob)
-		triggerDownload(blobUrl, item.name)
-		window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
-	} catch (error) {
-		ElMessage.warning('直接下载失败，已为您打开文件链接')
-		openFile(item)
-	}
+	window.location.href = `/api/upload/gitee/download?path=${encodeURIComponent(downloadPath)}`
 }
 
 const handleDelete = async (item) => {
@@ -463,7 +431,7 @@ loadDirectory('')
 		min-height: 0;
 		overflow: auto;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
 		gap: 16px;
 		align-content: start;
 	}
@@ -534,7 +502,7 @@ loadDirectory('')
 		display: flex;
 		gap: 2px;
 		flex-wrap: wrap;
-		justify-content: flex-end;
+		justify-content: space-between;
 	}
 
 	.preview-image {

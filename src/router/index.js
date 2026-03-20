@@ -69,6 +69,10 @@ const routes = [
         name: 'fireworks',
         component: () => import('@/views/interestThing/Fireworks.vue')
       }, {
+        path: '/gashapon',
+        name: 'gashapon',
+        component: () => import('@/views/interestThing/Gashapon.vue')
+      }, {
         path: '/markJsRender',
         name: 'markJsRender',
         component: () => import('@/views/blogSystem/MarkJsRender.vue')
