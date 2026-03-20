@@ -11,7 +11,7 @@ export const menu_left_config = [
             {
                 label: '博客管理',
                 value: '1-1',
-                path: '/blogManage?myBlog=1',
+                path: '/blogManage',
                 icon: 'Management',
             },
             {
@@ -135,26 +135,25 @@ export const menu_left_config = [
                 icon: 'GoodsFilled',
             },
             {
-                label: '星海',
+                label: '涂鸦跳跃',
+                value: '7-4',
+                path: '/graffitiJump',
+                icon: 'Pointer',
+            },
+            {
+                label: '绚烂烟花',
+                value: '7-2',
+                path: '/fireworks',
+                icon: 'Promotion',
+            },
+            {
+                label: '浩瀚星海',
                 value: '7-1',
                 path: '/starSea',
                 icon: 'StarFilled',
             },
             {
-                label: '烟花',
-                value: '7-2',
-                path: '/fireworks',
-                icon: 'Promotion',
-            },
-            
-            {
-                label: '涂鸦',
-                value: '7-4',
-                path: '/blogManage',
-                icon: 'Pointer',
-            },
-            {
-                label: '转盘',
+                label: '幸运转盘',
                 value: '7-5',
                 path: '/blogManage',
                 icon: 'Refresh',

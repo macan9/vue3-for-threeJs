@@ -99,7 +99,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRoute } from 'vue-router'
 import { postCreateReq, postDelete, postInfoPut, postListGet } from '@/apis/blogApis.js'
 import BlogEditorDialog from '@/views/blogSystem/components/BlogEditorDialog.vue'
 import BlogPreviewDialog from '@/views/blogSystem/components/BlogPreviewDialog.vue'
@@ -136,18 +135,23 @@ const editorRules = {
 	title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
 }
 
-const route = useRoute()
-
-const isMyBlog = computed(() => {
-	const myBlog = route.query.myBlog ?? route.query.myblog
-	return String(myBlog || '') === '1'
-})
-
 const filterTableData = computed(() => {
 	const keyword = search.value?.trim()?.toLowerCase()
 	if (!keyword) return tableData.value
 	return tableData.value.filter((row) => (row?.title || '').toLowerCase().includes(keyword))
 })
+
+const getCurrentUser = () => {
+	const rawUserInfo = localStorage.getItem('userInfo')
+	if (!rawUserInfo) return {}
+
+	try {
+		return JSON.parse(rawUserInfo)?.user || {}
+	} catch (error) {
+		console.error('解析用户信息失败', error)
+		return {}
+	}
+}
 
 const resetEditorForm = () => {
 	editorForm.title = ''
@@ -170,9 +174,10 @@ const fillEditorForm = (row = {}) => {
 const getPostData = async () => {
 	loading.value = true
 	try {
-		const rawUserInfo = localStorage.getItem('userInfo')
-		const userId = rawUserInfo ? JSON.parse(rawUserInfo)?.user?.id : undefined
-		const query = isMyBlog.value && userId ? { userId } : {}
+		const currentUser = getCurrentUser()
+		const userId = currentUser?.id
+		const auth = currentUser?.auth ?? currentUser?.authority ?? currentUser?.role
+		const query = Number(auth) === 1 ? {} : userId ? { userId } : {}
 		const { data } = await postListGet(query)
 		tableData.value = Array.isArray(data?.data) ? data.data : []
 	} catch (e) {

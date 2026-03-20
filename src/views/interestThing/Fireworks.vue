@@ -3,12 +3,6 @@
     class="fireworks-page home-view-page"
     @dblclick="handleBurst"
   >
-    <img
-      class="fireworks-bg"
-      :src="backgroundImage"
-      alt="background"
-    >
-
     <canvas
       ref="canvasRef"
       class="fireworks-canvas"
@@ -16,7 +10,6 @@
     />
 
     <div class="fireworks-mask" />
-    
   </section>
 </template>
 
@@ -33,7 +26,6 @@ const canvasRef = ref(null)
 const rocketsCount = ref(0)
 const particlesCount = ref(0)
 const autoLaunch = ref(true)
-const backgroundImage = computed(() => `${process.env.BASE_URL}img/background/bg.png`)
 
 const rockets = []
 const particles = []
@@ -129,26 +121,25 @@ class Rocket extends Particle {
     })
 
     this.explosionColor = randomFrom(explosionColors)
+    this.blastScale = randomBetween(0.72, 1.5)
   }
 
   explode() {
-    // 主体功能备注：
-    // 这里延续旧版“火箭升空后在空中裂变为大量粒子”的核心机制，
-    // 但不再依赖 jQuery 插件上下文，而是由组件内部统一维护状态。
-    const count = Math.round(randomBetween(72, 110))
+    const scale = this.blastScale
+    const count = Math.round(randomBetween(48, 116) * scale)
 
     for (let i = 0; i < count; i += 1) {
       const particle = new Particle(this.pos)
       const angle = Math.random() * Math.PI * 2
-      const speed = Math.cos(Math.random() * Math.PI / 2) * randomBetween(8, 16)
+      const speed = Math.cos(Math.random() * Math.PI / 2) * randomBetween(6, 15) * scale
 
       particle.vel.x = Math.cos(angle) * speed
       particle.vel.y = Math.sin(angle) * speed
-      particle.size = randomBetween(6, 10)
-      particle.gravity = 0.2
-      particle.resistance = 0.92
-      particle.shrink = randomBetween(0.93, 0.97)
-      particle.fade = randomBetween(0.012, 0.022)
+      particle.size = randomBetween(4, 10) * Math.min(scale, 1.25)
+      particle.gravity = randomBetween(0.16, 0.24)
+      particle.resistance = randomBetween(0.9, 0.94)
+      particle.shrink = randomBetween(0.92, 0.975)
+      particle.fade = randomBetween(0.01, 0.024)
       particle.flick = true
       particle.color = this.explosionColor
 
@@ -203,9 +194,8 @@ function launchBurst() {
 function clearScene() {
   if (!context) return
 
-  // 主体功能备注：
-  // 这里不做纯黑清屏，而是覆盖一层半透明深色，让烟花拥有连续拖尾和残影效果。
-  context.fillStyle = 'rgba(4, 8, 18, 0.08)'
+  // Keep the background image visible while still leaving a trailing glow.
+  context.fillStyle = 'rgba(4, 8, 18, 0.12)'
   context.fillRect(0, 0, screenWidth, screenHeight)
 }
 
@@ -290,7 +280,8 @@ onMounted(() => {
   context = canvas.getContext('2d')
   resizeCanvas()
 
-  context.fillStyle = 'rgba(4, 8, 18, 1)'
+  // Use a translucent night layer instead of an opaque fill, so the background image can remain visible.
+  context.fillStyle = 'rgba(4, 8, 18, 0.12)'
   context.fillRect(0, 0, screenWidth, screenHeight)
 
   resizeHandler = () => resizeCanvas()
@@ -323,16 +314,6 @@ onBeforeUnmount(() => {
   background-color: #040812;
 }
 
-.fireworks-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-  pointer-events: none;
-}
-
 .fireworks-canvas,
 .fireworks-mask {
   position: absolute;
@@ -352,59 +333,4 @@ onBeforeUnmount(() => {
     radial-gradient(circle at top, rgba(255, 204, 124, 0.14), transparent 30%),
     radial-gradient(circle at 80% 20%, rgba(71, 135, 255, 0.16), transparent 24%);
 }
-
-.panel-tag {
-  margin: 0 0 10px;
-  font-size: 12px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: #9dc5ff;
-}
-
-.panel-title {
-  margin: 0;
-  font-size: clamp(32px, 4vw, 50px);
-  line-height: 1.06;
-}
-
-.panel-desc {
-  margin: 16px 0 0;
-  line-height: 1.8;
-  color: rgba(235, 242, 255, 0.86);
-}
-
-.panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 22px;
-}
-
-.panel-actions button {
-  border: none;
-  border-radius: 999px;
-  padding: 12px 18px;
-  color: #f7fbff;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.panel-actions button:hover {
-  transform: translateY(-1px);
-}
-
-.primary-btn {
-  background: linear-gradient(135deg, #ff9a4a 0%, #ff4f7b 100%);
-}
-
-.panel-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 20px;
-  font-size: 13px;
-  color: rgba(209, 224, 255, 0.78);
-}
-
-
 </style>

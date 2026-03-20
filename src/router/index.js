@@ -22,6 +22,7 @@ const routes = [
       {
         path: '/blogDisplay/:id',
         name: 'blogDisplay',
+        meta: { public: true },
         component: () => import('@/views/blogSystem/BlogDisplay.vue')
       },
       {
@@ -51,6 +52,7 @@ const routes = [
       }, {
         path: '/DontHitTheSpike',
         name: 'DontHitTheSpike',
+        meta: { public: true },
         component: () => import('@/views/three/DontHitTheSpike.vue')
       }, {
         path: '/threePlanet',
@@ -71,7 +73,13 @@ const routes = [
       }, {
         path: '/gashapon',
         name: 'gashapon',
+        meta: { public: true },
         component: () => import('@/views/interestThing/Gashapon.vue')
+      }, {
+        path: '/graffitiJump',
+        name: 'graffitiJump',
+        meta: { public: true },
+        component: () => import('@/views/interestThing/GraffitiJump.vue')
       }, {
         path: '/markJsRender',
         name: 'markJsRender',
