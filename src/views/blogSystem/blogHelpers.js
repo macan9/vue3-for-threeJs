@@ -1,4 +1,5 @@
 export const coverFieldList = [
+	'cover_image',
 	'cover',
 	'coverUrl',
 	'cover_url',

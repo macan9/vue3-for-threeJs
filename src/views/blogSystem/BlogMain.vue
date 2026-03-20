@@ -8,7 +8,7 @@
 			<div class="blog-header">
 				<div class="header-copy">
 					<div class="header-title">最新文章</div>
-					<div class="header-desc">先加载全部博客，再按列表形式展示封面、标题和简介。</div>
+					<!-- <div class="header-desc">先加载全部博客，再按列表形式展示封面、标题和简介。</div> -->
 				</div>
 				<el-button type="primary" plain :loading="loading" @click="getBlogList">刷新</el-button>
 			</div>
@@ -39,7 +39,7 @@
 								<div class="blog-cover-wrap">
 									<img
 										class="blog-cover"
-										:src="getCover(item)"
+										:src="item.coverUrl"
 										:alt="item.title || '博客封面'"
 									>
 								</div>
@@ -47,7 +47,15 @@
 								<div class="blog-content">
 									<div class="blog-title-row">
 										<h3 class="blog-title">{{ item.title || '未命名博客' }}</h3>
-										<div class="blog-time">{{ formatDate(item.updated_at || item.created_at) }}</div>
+										<div class="blog-meta">
+											<img
+												v-if="item.isTop"
+												class="blog-top-icon"
+												:src="topStarIcon"
+												alt="置顶"
+											>
+											<div class="blog-time">{{ formatDate(item.updated_at || item.created_at) }}</div>
+										</div>
 									</div>
 
 									<p class="blog-summary">
@@ -68,6 +76,7 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { postListGet } from '@/apis/blogApis.js'
+import topStarIcon from '@/assets/icon/top-star.svg'
 import {
 	formatDate,
 	getCover,
@@ -80,6 +89,24 @@ import {
 const router = useRouter()
 const blogList = ref([])
 const loading = ref(false)
+
+const preloadImage = (src) => {
+	return new Promise((resolve) => {
+		if (!src) {
+			resolve()
+			return
+		}
+
+		const image = new Image()
+		image.onload = () => resolve()
+		image.onerror = () => resolve()
+		image.src = src
+	})
+}
+
+const preloadCoverList = async (list) => {
+	await Promise.all(list.map((item) => preloadImage(item.coverUrl)))
+}
 
 const openBlogDetail = (row, index) => {
 	const id = getRowId(row, index)
@@ -95,10 +122,20 @@ const getBlogList = async () => {
 	try {
 		const { data } = await postListGet()
 		const list = Array.isArray(data?.data) ? data.data : []
-		blogList.value = list.map((item) => ({
-			...item,
-			fallbackCover: getRandomCover(thumbnailCoverList),
-		}))
+		const nextList = list.map((item) => {
+			const nextItem = {
+				...item,
+				fallbackCover: getRandomCover(thumbnailCoverList),
+			}
+
+			return {
+				...nextItem,
+				coverUrl: getCover(nextItem),
+				isTop: Number(nextItem.is_top) === 1,
+			}
+		})
+		await preloadCoverList(nextList)
+		blogList.value = nextList
 	} catch (error) {
 		console.error('获取博客列表失败', error)
 		ElMessage.error('获取博客列表失败')
@@ -221,9 +258,22 @@ getBlogList()
 		word-break: break-word;
 	}
 
-	.blog-time {
+	.blog-meta {
 		flex: 0 0 auto;
+		display: flex;
+		align-items: center;
+		gap: 8px;
 		padding-top: 4px;
+	}
+
+	.blog-top-icon {
+		width: 16px;
+		height: 16px;
+		display: block;
+		flex: 0 0 auto;
+	}
+
+	.blog-time {
 		font-size: 13px;
 		color: #8a99aa;
 		white-space: nowrap;
