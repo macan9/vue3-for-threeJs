@@ -17,6 +17,7 @@ import MenuForTop from '@/components/menu/MenuForTop.vue'
 import MenuForLeft from '@/components/menu/MenuForLeft.vue'
 import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { menu_left_config } from '@/common/config/menu_left_config'
 
 export default {
   name: 'HomeView',
@@ -40,16 +41,20 @@ export default {
       return route.query.menuSource === 'left'
     })
 
-    watch(() => topMenuValue.value, () => {
-      localStorage.setItem('topMenuValue', topMenuValue.value)
-    })
+    const syncTopMenuByRoute = (path) => {
+      const currentPath = String(path || '').trim()
+      if (!currentPath) return
 
-    watch(
-      () => route.path,
-      (newPath) => {
-        judgePadding(newPath)
+      const matchedGroup = menu_left_config.find((group) => {
+        const children = Array.isArray(group?.children) ? group.children : []
+        return children.some((item) => String(item?.path || '').trim().split('?')[0] === currentPath)
+      })
+
+      if (matchedGroup?.pid && topMenuValue.value !== String(matchedGroup.pid)) {
+        topMenuValue.value = String(matchedGroup.pid)
+        localStorage.setItem('topMenuValue', topMenuValue.value)
       }
-    )
+    }
 
     const judgePadding = (newPath) => {
       if (noPaddingRoutes.indexOf(newPath) > -1) {
@@ -59,9 +64,23 @@ export default {
       }
     }
 
+    watch(() => topMenuValue.value, () => {
+      localStorage.setItem('topMenuValue', topMenuValue.value)
+    })
+
+    watch(
+      () => route.path,
+      (newPath) => {
+        syncTopMenuByRoute(newPath)
+        judgePadding(newPath)
+      },
+      { immediate: true }
+    )
+
     const getMockData = () => {
     }
 
+    syncTopMenuByRoute(route.path)
     judgePadding(route.path)
 
     return {

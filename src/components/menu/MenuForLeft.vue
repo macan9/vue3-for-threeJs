@@ -32,11 +32,12 @@
 <script lang="js" setup>
 import { menu_left_config } from '@/common/config/menu_left_config'
 import { menu_permission_config, resolveUserRoles } from '@/common/config/menu_permission_config'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { reactive, watch } from 'vue'
 import { defineProps, toRef } from 'vue'
 
 const router = useRouter()
+const route = useRoute()
 
 const props = defineProps({
     topMenuValue: {
@@ -63,6 +64,20 @@ const getRouteLocation = (path, source) => {
             menuSource: source,
         },
     }
+}
+
+const normalizePath = (path) => String(path || '').trim().split('?')[0]
+
+const flattenMenuTree = (tree) => {
+    const arr = Array.isArray(tree) ? tree : []
+    const result = []
+    arr.forEach((item) => {
+        result.push(item)
+        if (Array.isArray(item?.children) && item.children.length) {
+            result.push(...flattenMenuTree(item.children))
+        }
+    })
+    return result
 }
 
 watch(() => topMenuValue.value, () => {
@@ -124,6 +139,17 @@ const selectFirstMenu = () => {
 }
 
 const setActiveMenu = () => {
+    const currentPath = normalizePath(route.path)
+    const currentMatchedItem = flattenMenuTree(leftMenu.leftMenuTree).find(
+        (item) => normalizePath(item?.path) === currentPath
+    )
+
+    if (currentMatchedItem) {
+        defaultActiveMenu = currentMatchedItem.value
+        localStorage.setItem('activeLeftMenu', currentMatchedItem.value)
+        return
+    }
+
     const activeLeftMenu = localStorage.getItem('activeLeftMenu')
     const spcialMenu = ['1-1-2']
     console.log(activeLeftMenu, 'activeLeftMenu')
@@ -144,7 +170,9 @@ const findMenu = (key, tree) => {
     }
     tree.map(i => {
         if (i.value === key) {
-            router.push(getRouteLocation(i.path, 'left'))
+            if (normalizePath(i.path) !== normalizePath(route.path)) {
+                router.push(getRouteLocation(i.path, 'left'))
+            }
             defaultActiveMenu = i.value
             return
         }

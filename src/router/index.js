@@ -16,6 +16,7 @@ const routes = [
       {
         path: '/BlogMain',
         name: 'BlogMain',
+        meta: { public: true },
         component: () => import('@/views/blogSystem/BlogMain.vue')
       },
       {
@@ -81,11 +82,13 @@ const routes = [
   {
     path: '/MyResume',
     name: 'MyResume',
-    component: () => import(/* webpackChunkName: "about" */ '@/views/UseView.vue')
+    meta: { public: true },
+    component: () => import(/* webpackChunkName: "resume" */ '@/views/MyResume.vue')
   },
   {
     path: '/login',
     name: 'login',
+    meta: { public: true },
     component: () => import('@/views/login/LoginPages.vue')
   }
 ]
@@ -96,19 +99,12 @@ const router = createRouter({
 })
 
 // 路由守卫白名单：支持直接填写路由 name 或 path
-const routeGuardWhiteList = [
-  'login',
-  'DontHitTheSpike'
-]
-
-const isWhiteListRoute = (to) => {
-  return routeGuardWhiteList.includes(to.name) || routeGuardWhiteList.includes(to.path)
-}
+const isPublicRoute = (to) => to.matched.some((record) => record.meta?.public)
 
 router.beforeEach((to, from, next) => {
   const loginStatus = localStorage.getItem('loginStatus')
 
-  if (!isWhiteListRoute(to) && !loginStatus) {
+  if (!isPublicRoute(to) && !loginStatus) {
     next({ name: 'login' })
     return
   }

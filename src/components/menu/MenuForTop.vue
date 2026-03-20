@@ -142,7 +142,8 @@ const loadUserFromStorage = () => {
 
 const refreshUserInfo = async () => {
     loadUserFromStorage()
-    if (!userId.value) return
+    const loginStatus = String(localStorage.getItem('loginStatus') || '').trim()
+    if (!loginStatus || !userId.value) return
 
     try {
         const res = await userInfoGet(userId.value)
@@ -180,7 +181,11 @@ watch(
     { immediate: true }
 )
 
-refreshUserInfo()
+if (String(localStorage.getItem('loginStatus') || '').trim()) {
+    refreshUserInfo()
+} else {
+    loadUserFromStorage()
+}
 </script>
 
 <style lang="scss">

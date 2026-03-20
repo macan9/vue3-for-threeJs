@@ -54,7 +54,8 @@ api.interceptors.response.use(res => {
       message: String(msg),
       type: 'error',
    })
-   if(err.response && err.response.status == 401){
+   const loginStatus = String(localStorage.getItem('loginStatus') || '').trim()
+   if(err.response && err.response.status == 401 && loginStatus){
       loginOut()
    }
     return Promise.reject(err)

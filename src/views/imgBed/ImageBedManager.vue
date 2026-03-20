@@ -14,8 +14,15 @@
 				<span class="path-value">{{ displayPath }}</span>
 			</div>
 
-			<el-upload class="upload-panel" drag multiple action="#" :show-file-list="false"
-				:before-upload="beforeUpload" :http-request="handleUpload">
+			<el-upload
+				class="upload-panel"
+				drag
+				multiple
+				action="#"
+				:show-file-list="false"
+				:before-upload="beforeUpload"
+				:http-request="handleUpload"
+			>
 				<el-icon class="upload-icon">
 					<UploadFilled />
 				</el-icon>
@@ -26,8 +33,12 @@
 			</el-upload>
 
 			<div v-loading="loading" class="content-list">
-				<div v-for="item in contentList" :key="item.path || item.relativePath || item.name" class="content-card"
-					@click="handleItemClick(item)">
+				<div
+					v-for="item in contentList"
+					:key="item.path || item.relativePath || item.name"
+					class="content-card"
+					@click="handleItemClick(item)"
+				>
 					<div class="thumb-wrap">
 						<template v-if="item.type === 'dir'">
 							<el-icon class="folder-icon">
@@ -35,8 +46,12 @@
 							</el-icon>
 						</template>
 						<template v-else-if="isImageFile(item)">
-							<el-image class="image-thumb" :src="getItemPreviewUrl(item)" fit="cover"
-								@click.stop="previewImage(item)" />
+							<el-image
+								class="image-thumb"
+								:src="getItemPreviewUrl(item)"
+								fit="cover"
+								@click.stop="previewImage(item)"
+							/>
 						</template>
 						<template v-else>
 							<el-icon class="file-icon">
@@ -51,9 +66,13 @@
 					</div>
 
 					<div class="item-actions">
-						<el-button v-if="item.type !== 'dir' && isImageFile(item)" link type="primary"
-							@click.stop="previewImage(item)">
-							预览
+						<el-button
+							v-if="item.type !== 'dir' && isImageFile(item)"
+							link
+							type="primary"
+							@click.stop="copyFileUrl(item)"
+						>
+							复制URL
 						</el-button>
 						<el-button v-if="item.type !== 'dir'" link type="primary" @click.stop="downloadFile(item)">
 							下载
@@ -66,7 +85,7 @@
 			</div>
 		</div>
 
-			<el-image-viewer v-if="previewVisible" :url-list="previewList" teleported @close="closePreview" />
+		<el-image-viewer v-if="previewVisible" :url-list="previewList" teleported @close="closePreview" />
 	</div>
 </template>
 
@@ -90,6 +109,7 @@ const getStoredConfig = () => {
 	if (!configString) {
 		return null
 	}
+
 	try {
 		return JSON.parse(configString)
 	} catch (error) {
@@ -102,11 +122,13 @@ const currentDirName = computed(() => {
 		const pathParts = currentPath.value.split('/').filter(Boolean)
 		return pathParts[pathParts.length - 1]
 	}
+
 	const config = getStoredConfig()
 	const basePath = config?.basePath || config?.path || ''
 	if (!basePath) {
 		return '根目录'
 	}
+
 	const pathParts = basePath.split('/').filter(Boolean)
 	return pathParts[pathParts.length - 1] || '根目录'
 })
@@ -162,12 +184,15 @@ const getFolderPath = (item) => {
 
 const loadDirectory = async (path = '') => {
 	loading.value = true
-	const result = await getGiteeContents(path)
-	loading.value = false
 
-	const list = normalizeList(result).filter(shouldDisplayItem)
-	currentPath.value = path
-	contentList.value = sortList(list)
+	try {
+		const result = await getGiteeContents(path)
+		const list = normalizeList(result).filter(shouldDisplayItem)
+		currentPath.value = path
+		contentList.value = sortList(list)
+	} finally {
+		loading.value = false
+	}
 }
 
 const goParentDirectory = () => {
@@ -216,6 +241,38 @@ const openFile = (item) => {
 		return
 	}
 	window.open(targetUrl, '_blank')
+}
+
+const writeTextToClipboard = async (text) => {
+	if (navigator?.clipboard?.writeText) {
+		await navigator.clipboard.writeText(text)
+		return
+	}
+
+	const textArea = document.createElement('textarea')
+	textArea.value = text
+	textArea.setAttribute('readonly', 'readonly')
+	textArea.style.position = 'fixed'
+	textArea.style.opacity = '0'
+	document.body.appendChild(textArea)
+	textArea.select()
+	document.execCommand('copy')
+	document.body.removeChild(textArea)
+}
+
+const copyFileUrl = async (item) => {
+	const targetUrl = getItemPreviewUrl(item)
+	if (!targetUrl) {
+		ElMessage.warning('当前文件没有可复制的 URL')
+		return
+	}
+
+	try {
+		await writeTextToClipboard(targetUrl)
+		ElMessage.success('URL 已复制')
+	} catch (error) {
+		ElMessage.error('复制 URL 失败')
+	}
 }
 
 const downloadFile = async (item) => {
@@ -475,7 +532,7 @@ loadDirectory('')
 
 	.item-actions {
 		display: flex;
-		gap: 12px;
+		gap: 2px;
 		flex-wrap: wrap;
 		justify-content: flex-end;
 	}
