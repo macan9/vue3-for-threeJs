@@ -167,10 +167,10 @@ export default {
       .page-title::before {
         content: "";
         position: absolute;
-        top: 18px;
-        left: 16px;
+        top: 15px;
+        left: 19px;
         width: 6px;
-        height: 22px;
+        height: 30px;
         border-radius: 999px;
         background: linear-gradient(180deg, #8dc3ff 0%, #5da8ff 100%);
       }

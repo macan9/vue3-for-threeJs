@@ -43,7 +43,7 @@
 				</div>
 			</div>
 
-			<div class="touch-controls">
+			<div v-if="isMobile" class="touch-controls">
 				<button
 					class="touch-button"
 					type="button"
@@ -71,8 +71,11 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useStore } from 'vuex'
 
 const canvasRef = ref(null)
+const store = useStore()
+const isMobile = computed(() => store.state.isMobile)
 const score = ref(0)
 const highScore = ref(0)
 const gameStarted = ref(false)
@@ -635,6 +638,38 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: 0;
 	padding: 0;
+	background:
+		radial-gradient(circle at top, rgba(255, 250, 223, 0.92), transparent 34%),
+		linear-gradient(180deg, #fbf8e8 0%, #eef5d8 48%, #dceec6 100%);
+
+	.home-view-title {
+		height: 68px;
+		border-bottom: 1px solid rgba(74, 98, 55, 0.14);
+		background:
+			linear-gradient(180deg, rgba(255, 250, 223, 0.96), rgba(247, 240, 201, 0.92));
+		box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+
+		.page-title {
+			padding-left: 40px;
+			font-size: 20px;
+			font-weight: 800;
+			letter-spacing: 0.08em;
+			color: #314428;
+			text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+		}
+
+		.page-title::before {
+			top: 18px;
+			left: 18px;
+			width: 10px;
+			height: 33px;
+			border-radius: 10px;
+			background: linear-gradient(180deg, #9ce04d 0%, #78c958 100%);
+			box-shadow:
+				0 0 0 3px rgba(156, 224, 77, 0.16),
+				0 8px 18px rgba(74, 98, 55, 0.16);
+		}
+	}
 }
 
 .game-toolbar {
@@ -733,7 +768,9 @@ onBeforeUnmount(() => {
 	background:
 		radial-gradient(circle at top, rgba(255, 255, 255, 0.58), transparent 36%),
 		linear-gradient(180deg, #fbf8e8, #eef5d8 48%, #dceec6);
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.7),
+		inset 0 18px 32px rgba(255, 250, 223, 0.35);
 	overflow: hidden;
 	-webkit-user-select: none;
 	user-select: none;
@@ -874,9 +911,4 @@ onBeforeUnmount(() => {
 	}
 }
 
-@media (min-width: 901px) {
-	.touch-controls {
-		opacity: 0.58;
-	}
-}
 </style>

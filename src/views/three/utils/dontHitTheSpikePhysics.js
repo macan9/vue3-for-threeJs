@@ -3,16 +3,25 @@ import * as THREE from 'three'
 export const DONT_HIT_THE_SPIKE_CONFIG = Object.freeze({
   lanes: [-7.5, 0, 7.5],
   playerZ: 10,
-  playerRadius: 1.15,
-  basePanSpeed: 24,
-  speedAccelPerSecond: 1.2,
+  playerRadius: 0.65,
+  basePanSpeed: 50,
+  speedAccelPerSecond: 1,
   maxPanSpeed: 120,
+  baseSpikeDensity: 0.2,
+  densityAccelPerSecond: 0.1,
+  maxSpikeDensity: 0.8,
+  spikeRowsPerGeneration: 50,
+  lowSpikeHeight: 5,
+  midSpikeHeight: 10,
+  highSpikeHeight: 16,
+  highSpikeUnlockScore: 100,
   gravityStrength: 32,
   baseHeightScale: 1.5,
   jumpVelocity: 15,
   maxJumpHoldSeconds: 0.18,
   jumpBoostPerSecond: 34,
   jumpCutMultiplier: 0.45,
+  gravityFlipCooldownSeconds: 1,
   levelHalfWidth: 15,
   levelMinY: 0,
   cameraBoundsPadding: 1.25,
@@ -85,12 +94,16 @@ export function cutJumpVelocity(player, inverted, jumpCutMultiplier) {
   }
 }
 
+export function canToggleGravity() {
+  return true
+}
+
 export function toggleGravity(inverted, gravity, gravityStrength, player, jumpState) {
   const nextInverted = !inverted
   gravity.y = nextInverted ? gravityStrength : -gravityStrength
   resetJumpState(jumpState)
-  player.jumping = false
-  player.vel.y = 0
+  player.jumping = true
+  player.vel.y = nextInverted ? Math.abs(player.vel.y) : -Math.abs(player.vel.y)
   return nextInverted
 }
 

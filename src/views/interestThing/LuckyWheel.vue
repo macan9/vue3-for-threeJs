@@ -12,7 +12,7 @@
 					</div>
 
 					<div class="wheel-stage">
-						<div class="wheel-wrap">
+						<div ref="wheelWrapRef" class="wheel-wrap">
 							<div class="wheel-pointer">
 								<span class="pointer-badge">LUCK</span>
 								<span class="pointer-head" />
@@ -235,6 +235,8 @@ import luckyItems from './LuckyItems'
 const normalizeAngle = (value) => ((value % 360) + 360) % 360
 
 const wheelDiskRef = ref(null)
+const wheelWrapRef = ref(null)
+const wheelDiameter = ref(560)
 const wheelItems = ref(
 	Array.isArray(luckyItems)
 		? luckyItems.map((item, index) => ({
@@ -253,6 +255,8 @@ const currentResult = ref(null)
 const spinRecords = ref([])
 const showHistoryDialog = ref(false)
 let rotationFrame = null
+let wheelResizeObserver = null
+let removeWheelResizeListener = null
 
 const canSpin = computed(() => wheelItems.value.length >= 2)
 
@@ -279,12 +283,16 @@ const wheelBackground = computed(() => {
 
 const wheelSegments = computed(() => {
 	let startAngle = -90
+	const currentDiameter = Math.max(260, Number(wheelDiameter.value) || 560)
+	const diameterRatio = currentDiameter / 560
 
 	return wheelItems.value.map((item) => {
 		const spanAngle = (item.percentage / totalPercentage.value) * 360
 		const centerAngle = startAngle + spanAngle / 2
-		const labelRadius = spanAngle < 32 ? 194 : spanAngle < 48 ? 182 : 170
-		const labelWidth = Math.max(72, Math.min(144, Math.round((spanAngle / 360) * 620)))
+		const radiusFactor = spanAngle < 32 ? 0.43 : spanAngle < 48 ? 0.405 : 0.378
+		const compactPull = diameterRatio < 0.8 ? (0.8 - diameterRatio) * 44 : 0
+		const labelRadius = Math.max(90, currentDiameter * radiusFactor - compactPull)
+		const labelWidth = Math.max(64, Math.min(currentDiameter * 0.31, Math.round((spanAngle / 360) * currentDiameter * 1.14)))
 		const segment = {
 			...item,
 			startAngle,
@@ -334,6 +342,11 @@ const setDiskRotation = (angle) => {
 	if (wheelDiskRef.value) {
 		wheelDiskRef.value.style.transform = `translateZ(0) rotate(${angle}deg)`
 	}
+}
+
+const updateWheelDiameter = () => {
+	const nextWidth = wheelWrapRef.value?.clientWidth || 560
+	wheelDiameter.value = Math.max(260, nextWidth - 48)
 }
 
 const animateRotation = ({ from, to, duration, onComplete }) => {
@@ -398,9 +411,26 @@ const spinWheel = () => {
 
 onMounted(() => {
 	setDiskRotation(rotation.value)
+	updateWheelDiameter()
+	if (typeof ResizeObserver !== 'undefined' && wheelWrapRef.value) {
+		wheelResizeObserver = new ResizeObserver((entries) => {
+			const entry = entries[0]
+			if (!entry) return
+			const nextWidth = entry.contentRect?.width || wheelWrapRef.value?.clientWidth || 560
+			wheelDiameter.value = Math.max(260, nextWidth - 48)
+		})
+		wheelResizeObserver.observe(wheelWrapRef.value)
+	} else {
+		window.addEventListener('resize', updateWheelDiameter)
+		removeWheelResizeListener = () => window.removeEventListener('resize', updateWheelDiameter)
+	}
 })
 
 onBeforeUnmount(() => {
+	wheelResizeObserver?.disconnect()
+	wheelResizeObserver = null
+	removeWheelResizeListener?.()
+	removeWheelResizeListener = null
 	if (rotationFrame) {
 		cancelAnimationFrame(rotationFrame)
 		rotationFrame = null

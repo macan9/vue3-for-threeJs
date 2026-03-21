@@ -3,7 +3,7 @@
     <div class="menu-mobile__bar">
       <div class="menu-mobile__title">
         <span class="menu-mobile__title-main">{{ currentMenuTitle }}</span>
-        <span class="menu-mobile__title-sub">移动端菜单</span>
+        <!-- <span class="menu-mobile__title-sub">移动端菜单</span> -->
       </div>
 
       <el-button class="menu-mobile__trigger" circle @click="drawerVisible = true">

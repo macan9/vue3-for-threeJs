@@ -10,9 +10,9 @@
     <div class="dont-hit-remind">
       <div class="hud">
         <h1 class="reaction">速度：{{ reactionSpeedText }}</h1>
+        <h1 class="density">密度：{{ spikeDensityText }}</h1>
         <h1 class="score">得分：{{ score }}</h1>
         <h1 class="last-score">上次得分：{{ lastScore }}</h1>
-        <h1 class="lose" :class="{ show: showLose }">你失败了！</h1>
         <h1 class="paused" v-if="paused">已暂停</h1>
       </div>
 
@@ -40,6 +40,45 @@
         </div>
       </div>
 
+      <div v-if="isMobile" class="touch-controls">
+        <button
+          class="touch-button touch-button--direction"
+          type="button"
+          @touchstart.prevent="handleMoveLeft"
+          @mousedown.prevent="handleMoveLeft"
+        >
+          左移
+        </button>
+        <button
+          class="touch-button touch-button--direction"
+          type="button"
+          @touchstart.prevent="handleMoveRight"
+          @mousedown.prevent="handleMoveRight"
+        >
+          右移
+        </button>
+        <button
+          class="touch-button touch-button--action"
+          type="button"
+          @touchstart.prevent="handleFlipGravity"
+          @mousedown.prevent="handleFlipGravity"
+        >
+          翻转
+        </button>
+        <button
+          class="touch-button touch-button--jump"
+          type="button"
+          @touchstart.prevent="handleJumpPress"
+          @touchend.prevent="handleJumpRelease"
+          @touchcancel.prevent="handleJumpRelease"
+          @mousedown.prevent="handleJumpPress"
+          @mouseup.prevent="handleJumpRelease"
+          @mouseleave.prevent="handleJumpRelease"
+        >
+          跳跃
+        </button>
+      </div>
+
       <LeaderboardDialog :visible="showLeaderboard" @close="showLeaderboard = false" />
     </div>
   </div>
@@ -47,16 +86,17 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useStore } from 'vuex'
 import { ElMessage } from 'element-plus'
 import { DailyTimeFormat } from '@/utils/utils.js'
 import { gameScoreCreateReq } from '@/apis/gameScoreApis.js'
 import LeaderboardDialog from '@/views/three/components/LeaderboardDialog.vue'
 import { createDontHitTheSpikeRuntime } from '@/views/three/utils/dontHitTheSpikeRuntime.js'
 
+const store = useStore()
 const mountEl = ref(null)
 const score = ref(0)
 const lastScore = ref(0)
-const showLose = ref(false)
 const paused = ref(false)
 const stopped = ref(true)
 const gameOver = ref(false)
@@ -67,6 +107,8 @@ const recordError = ref('')
 const showLeaderboard = ref(false)
 const isLoading = ref(true)
 const reactionSpeed = ref(0)
+const spikeDensity = ref(0)
+const isMobile = computed(() => store.state.isMobile)
 
 const recordBtnText = computed(() => {
   if (scoreRecorded.value) return '已记录'
@@ -75,11 +117,32 @@ const recordBtnText = computed(() => {
 })
 
 const reactionSpeedText = computed(() => `${reactionSpeed.value.toFixed(2)}x`)
+const spikeDensityText = computed(() => spikeDensity.value.toFixed(2))
 
 let gameRuntime = null
 
 function requestStart() {
   gameRuntime?.requestStart()
+}
+
+function handleMoveLeft() {
+  gameRuntime?.moveLeft()
+}
+
+function handleMoveRight() {
+  gameRuntime?.moveRight()
+}
+
+function handleFlipGravity() {
+  gameRuntime?.flipGravity()
+}
+
+function handleJumpPress() {
+  gameRuntime?.jumpPress()
+}
+
+function handleJumpRelease() {
+  gameRuntime?.jumpRelease()
 }
 
 const safeParseJson = (str) => {
@@ -140,9 +203,11 @@ onMounted(() => {
     onSpeedChange: (speed) => {
       reactionSpeed.value = Number(speed || 0)
     },
+    onDensityChange: (density) => {
+      spikeDensity.value = Number(density || 0)
+    },
     score,
     lastScore,
-    showLose,
     paused,
     stopped,
     gameOver,
@@ -173,6 +238,9 @@ onUnmounted(() => {
   height: 100%;
   overflow: hidden;
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 
   #dont-hit {
     width: 100%;
@@ -246,9 +314,15 @@ onUnmounted(() => {
       left: 1rem;
     }
 
-    .paused {
+    .density {
       position: absolute;
       top: 3.2rem;
+      left: 1rem;
+    }
+
+    .paused {
+      position: absolute;
+      top: 5.4rem;
       left: 1rem;
     }
 
@@ -262,25 +336,6 @@ onUnmounted(() => {
       position: absolute;
       top: 3.2rem;
       right: 1rem;
-    }
-
-    .lose {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: auto;
-      max-width: 100%;
-      padding: 0 1rem;
-      font-size: 5rem;
-      text-align: center;
-      opacity: 0;
-      transition: opacity 0.2s ease-out;
-      pointer-events: none;
-    }
-
-    .lose.show {
-      opacity: 1;
     }
 
     .modal {
@@ -348,6 +403,81 @@ onUnmounted(() => {
       margin: 0.75rem 0 0 0;
       color: rgba(255, 120, 120, 0.95);
       font-size: 0.95rem;
+    }
+
+    .touch-controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+      pointer-events: auto;
+      touch-action: manipulation;
+    }
+
+    .touch-button {
+      min-height: 54px;
+      padding: 0 8px;
+      border: 1px solid rgba(252, 186, 3, 0.42);
+      border-radius: 14px;
+      background: rgba(0, 17, 39, 0.72);
+      color: #fcba03;
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .touch-button--jump {
+      background: rgba(252, 186, 3, 0.16);
+    }
+
+    .touch-button--action {
+      background: rgba(130, 92, 255, 0.18);
+    }
+
+    .touch-button:active {
+      transform: translateY(1px) scale(0.985);
+      background: rgba(252, 186, 3, 0.24);
+    }
+  }
+}
+
+@media (min-width: 769px) {
+  .dont-hit-the-spikes .dont-hit-remind .touch-controls {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .dont-hit-the-spikes .dont-hit-remind {
+    .hud h1 {
+      font-size: 1rem;
+    }
+
+    .reaction,
+    .score {
+      top: 0.8rem;
+    }
+
+    .density,
+    .last-score {
+      top: 2.6rem;
+    }
+
+    .paused {
+      top: 4.4rem;
     }
   }
 }
