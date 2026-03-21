@@ -75,7 +75,12 @@ const routes = [
         name: 'gashapon',
         meta: { public: true },
         component: () => import('@/views/interestThing/Gashapon.vue')
-      }, {
+      },{
+        path: '/luckyWheel',
+        name: 'luckyWheel',
+        meta: { public: true },
+        component: () => import('@/views/interestThing/LuckyWheel.vue')
+      },  {
         path: '/graffitiJump',
         name: 'graffitiJump',
         meta: { public: true },

@@ -135,6 +135,12 @@ export const menu_left_config = [
                 icon: 'GoodsFilled',
             },
             {
+                label: '幸运转盘',
+                value: '7-5',
+                path: '/luckyWheel',
+                icon: 'Refresh',
+            },
+            {
                 label: '涂鸦跳跃',
                 value: '7-4',
                 path: '/graffitiJump',
@@ -152,12 +158,7 @@ export const menu_left_config = [
                 path: '/starSea',
                 icon: 'StarFilled',
             },
-            {
-                label: '幸运转盘',
-                value: '7-5',
-                path: '/blogManage',
-                icon: 'Refresh',
-            },
+            
         ],
     },
 ]

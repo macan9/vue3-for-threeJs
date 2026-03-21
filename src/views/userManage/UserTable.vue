@@ -104,7 +104,19 @@
             ElMessage.warning('管理员用户不允许删除')
             return
         }
-        ElMessageBox.confirm('确定要删除该用户吗？')
+        ElMessageBox.confirm('确定要删除该用户吗？', '首次确认', {
+            confirmButtonText: '继续',
+            cancelButtonText: '取消',
+            type: 'warning',
+        })
+        .then(() => {
+            return ElMessageBox.confirm(`请再次确认删除用户「${row?.username || row?.nickname || row?.id}」`, '二次确认', {
+                confirmButtonText: '确认删除',
+                cancelButtonText: '取消',
+                type: 'error',
+                confirmButtonClass: 'el-button--danger',
+            })
+        })
         .then(async () => {
             const res = await userDelete(row.id)
             ensureApiSuccess(res, '删除失败')
@@ -115,7 +127,7 @@
             getUserData()
         })
         .catch(() => {
-            // catch error
+            // canceled
         })
     }
 
