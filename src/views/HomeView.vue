@@ -1,9 +1,10 @@
 <template>
-  <div class="home">
-    <MenuForTop @update-menu-value="setTopMenuValue" />
+  <div class="home" :class="{ 'is-mobile': isMobile }">
+    <MenuForMobile v-if="isMobile" @update-menu-value="setTopMenuValue" />
+    <MenuForTop v-else @update-menu-value="setTopMenuValue" />
 
     <div class="display-flex-main">
-      <MenuForLeft v-if="showLeftMenu" :topMenuValue="topMenuValue" />
+      <MenuForLeft v-if="!isMobile && showLeftMenu" :topMenuValue="topMenuValue" />
 
       <div class="main-display" :class="hasPadding ? 'main-display-padding' : ''">
         <router-view />
@@ -15,8 +16,10 @@
 <script>
 import MenuForTop from '@/components/menu/MenuForTop.vue'
 import MenuForLeft from '@/components/menu/MenuForLeft.vue'
+import MenuForMobile from '@/components/menu/MenuForMobile.vue'
 import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useStore } from 'vuex'
 import { menu_left_config } from '@/common/config/menu_left_config'
 
 export default {
@@ -24,10 +27,13 @@ export default {
   components: {
     MenuForTop,
     MenuForLeft,
+    MenuForMobile,
   },
   setup() {
+    const store = useStore()
     const menuVal = localStorage.getItem('topMenuValue')
     const topMenuValue = menuVal ? ref(menuVal) : ref('1')
+    const isMobile = computed(() => store.state.isMobile)
 
     const setTopMenuValue = (val) => {
       topMenuValue.value = val
@@ -85,6 +91,7 @@ export default {
 
     return {
       topMenuValue,
+      isMobile,
       hasPadding,
       showLeftMenu,
       getMockData,
@@ -107,6 +114,18 @@ export default {
     gap: 14px;
     padding: 14px;
     box-sizing: border-box;
+  }
+
+  &.is-mobile {
+    .display-flex-main {
+      height: calc(100% - 64px);
+      padding: 10px 10px 12px;
+      gap: 0;
+    }
+
+    .main-display {
+      border-radius: 20px;
+    }
   }
 
   .main-display {

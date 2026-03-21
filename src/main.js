@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
+import { initDeviceState } from '@/common/config/device_config'
 
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
@@ -22,7 +23,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
-
+initDeviceState(store)
 
 app.use(router).use(store).use(ElementPlus).mount('#app')
 

@@ -13,18 +13,21 @@ export const menu_left_config = [
                 value: '1-1',
                 path: '/blogManage',
                 icon: 'Management',
+                moblieHide: true,
             },
             {
                 label: '用户管理',
                 value: '1-2',
                 path: '/userTable',
                 icon: 'User',
+                moblieHide: true,
             },
             {
                 label: '用户日志',
                 value: '1-3',
                 path: '/userLog',
                 icon: 'Document',
+                moblieHide: true,
             },
             {
                 label: '图床管理',
@@ -83,23 +86,14 @@ export const menu_left_config = [
                 value: '3-2',
                 path: '/threePlanet',
                 icon: 'Sunny',
+                moblieHide: true,
             },
             {
                 label: '三维小岛',
                 value: '3-3',
                 path: '/ThreeIsland',
                 icon: 'Compass',
-            },
-        ],
-    },
-    {
-        pid: '4',
-        children: [
-            {
-                label: '博客管理',
-                value: '4-1',
-                path: '/blogManage',
-                icon: 'Management',
+                moblieHide: true,
             },
         ],
     },
