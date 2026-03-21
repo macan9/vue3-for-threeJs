@@ -47,12 +47,19 @@
 										:key="ball.id"
 										class="bowl-ball"
 										:style="{
-											'--ball-x': `${ball.x}%`,
-											'--ball-y': `${ball.y}%`,
+											'--ball-x': `${ball.x}px`,
+											'--ball-y': `${ball.y}px`,
 											'--ball-size': `${ball.size}px`,
 											'--ball-a': ball.colors[0],
 											'--ball-b': ball.colors[1],
 											'--ball-delay': `${ball.delay}s`,
+											'--ball-z': ball.zIndex,
+											'--ball-opacity': ball.opacity,
+											'--ball-blur': `${ball.blur}px`,
+											'--ball-shadow-alpha': ball.shadowAlpha,
+											'--ball-outline-alpha': ball.outlineAlpha,
+											'--ball-shell': ball.shellColor,
+											'--ball-core': ball.coreColor,
 										}"
 									/>
 								</div>
@@ -142,8 +149,23 @@
 			</div>
 		</div>
 
-		<el-dialog v-model="showHistoryDialog" title="最近掉落" width="420px" append-to-body style="margin-top: 20%;">
+		<el-dialog v-model="showHistoryDialog" title="最近掉落" width="560px" append-to-body style="margin-top: 12%;">
 			<div class="history-dialog-body">
+				<div v-if="history.length" class="history-summary">
+					<div class="history-summary-card">
+						<span class="history-summary-label">记录数</span>
+						<strong>{{ history.length }}</strong>
+					</div>
+					<div class="history-summary-card">
+						<span class="history-summary-label">最近稀有度</span>
+						<strong>{{ history[0].rarity }}</strong>
+					</div>
+					<div class="history-summary-card accent">
+						<span class="history-summary-label">最新主题</span>
+						<strong>{{ history[0].theme }}</strong>
+					</div>
+				</div>
+
 				<div class="history-dialog-actions">
 					<button type="button" class="history-clear" @click="clearHistory">清空记录</button>
 				</div>
@@ -156,9 +178,19 @@
 						:style="{ '--history-color': entry.color }"
 					>
 						<span class="history-icon">{{ entry.icon }}</span>
-						<div>
-							<p class="history-name">{{ entry.name }}</p>
-							<p class="history-meta">{{ entry.rarity }}</p>
+						<div class="history-content">
+							<div class="history-main">
+								<div>
+									<p class="history-name">{{ entry.name }}</p>
+									<p class="history-meta">{{ entry.rarity }} · 编号 {{ entry.id.toString().padStart(2, '0') }}</p>
+								</div>
+								<span class="history-time">{{ formatHistoryTime(entry.droppedAt) }}</span>
+							</div>
+							<p class="history-desc">{{ entry.description }}</p>
+							<div class="history-tags">
+								<span>主题 {{ entry.theme }}</span>
+								<span>色彩 {{ entry.color }}</span>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -193,6 +225,7 @@ const dispensedPrize = ref(null)
 const openedPrize = ref(null)
 const history = ref([])
 const showHistoryDialog = ref(false)
+const machineBalls = ref([])
 
 const prizes = [
 	{ id: 1, name: '霓虹猫咪', icon: '🐈', description: '一只会在夜里发光的电子猫，尾巴像霓虹灯一样晃来晃去。', rarity: 'Rare', theme: '霓虹粉', color: '#ff6fa9', weight: 2 },
@@ -203,23 +236,87 @@ const prizes = [
 	{ id: 6, name: '四叶云朵', icon: '☁️', description: '软绵绵的小云会飘在桌角，像把好运压缩成了一团。', rarity: 'Common', theme: '薄雾绿', color: '#7ad9a7', weight: 4 },
 ]
 
-const machineBalls = Array.from({ length: 18 }, (_, index) => {
-	const palette = [
-		['#ff7ea8', '#ffc857'],
-		['#63d2ff', '#7ad9a7'],
-		['#8d9eff', '#ff7c6b'],
-		['#8de3ff', '#ffe08a'],
-	]
+const machineBallRows = [
+	{ size: 48, overlap: 0.35 },
+	{ size: 47, overlap: 0.34 },
+	{ size: 46, overlap: 0.33 },
+	{ size: 45, overlap: 0.31 },
+]
 
-	return {
-		id: index + 1,
-		x: 10 + (index % 6) * 15 + Math.random() * 4,
-		y: 16 + Math.floor(index / 6) * 24 + Math.random() * 8,
-		size: 36 + Math.round(Math.random() * 14),
-		colors: palette[index % palette.length],
-		delay: Number((Math.random() * 1.8).toFixed(2)),
+const machineBallPalette = [
+	{ shell: '#ff7ea8', core: '#ffd56b' },
+	{ shell: '#63d2ff', core: '#8af2c7' },
+	{ shell: '#8d9eff', core: '#ff9b86' },
+	{ shell: '#8de3ff', core: '#ffe08a' },
+]
+
+let bowlResizeObserver = null
+
+const buildMachineBalls = () => {
+	const bowlEl = bowlRef.value
+	if (!bowlEl) return
+
+	const bowlWidth = bowlEl.clientWidth
+	const bowlHeight = bowlEl.clientHeight
+	if (!bowlWidth || !bowlHeight) return
+
+	const nextBalls = []
+	const maxRow = machineBallRows.length - 1
+	const bottomContact = 1
+	const rowLift = 36
+
+	const getWallInset = (centerY, ballSize) => {
+		const t = centerY / bowlHeight
+		const topCurve = Math.max(0, (0.26 - t) / 0.26)
+		const bottomCurve = Math.max(0, (t - 0.72) / 0.28)
+		const baseInset = 1
+		const inset = baseInset + topCurve * 14 + bottomCurve * 12 - ballSize * 0.02
+		return Math.max(0, inset)
 	}
-})
+
+	machineBallRows.forEach((rowConfig, rowIndex) => {
+		const depth = 1 - rowIndex / maxRow
+		const ballSize = rowConfig.size
+		const y = bowlHeight - bottomContact - ballSize - rowIndex * rowLift
+		const centerY = y + ballSize / 2
+		const sideInset = getWallInset(centerY, ballSize)
+		const usableWidth = bowlWidth - sideInset * 2
+		const step = Math.max(ballSize * (1 - rowConfig.overlap), 18)
+		const count = Math.max(2, Math.floor((usableWidth - ballSize) / step) + 1)
+		const rowSpan = Math.max(0, usableWidth - ballSize)
+
+		for (let colIndex = 0; colIndex < count; colIndex += 1) {
+			const progress = count === 1 ? 0.5 : colIndex / (count - 1)
+			const edgeBias = colIndex === 0 || colIndex === count - 1 ? 1 : 0
+			const centerPull = Math.abs(progress - 0.5) * 2
+			const centerWeight = 1 - centerPull
+			const x = sideInset + rowSpan * progress
+			const archLift = centerPull * rowIndex * 3.4
+			const jitterY = rowIndex === 0 ? 0 : Math.random() * 0.8 - 0.4
+			const ballY = Math.max(0, y - archLift + jitterY)
+			const paletteItem = machineBallPalette[(rowIndex * 4 + colIndex) % machineBallPalette.length]
+			const zJitter = Math.floor(Math.random() * 4)
+
+			nextBalls.push({
+				id: `${rowIndex}-${colIndex}`,
+				x,
+				y: ballY,
+				size: ballSize + (edgeBias ? 1 : 0),
+				colors: [paletteItem.shell, paletteItem.core],
+				delay: Number((Math.random() * 1.8).toFixed(2)),
+				zIndex: 20 + rowIndex * 20 + Math.round(centerWeight * 14) + zJitter,
+				opacity: Number((0.86 + depth * 0.08).toFixed(2)),
+				blur: Number(((1 - depth) * 0.18).toFixed(2)),
+				shadowAlpha: Number((0.18 + depth * 0.08).toFixed(2)),
+				outlineAlpha: Number((0.34 + depth * 0.1).toFixed(2)),
+				shellColor: paletteItem.shell,
+				coreColor: paletteItem.core,
+			})
+		}
+	})
+
+	machineBalls.value = nextBalls
+}
 
 const weightedPool = prizes.flatMap((item) => Array.from({ length: item.weight }, () => item))
 
@@ -232,6 +329,14 @@ const capsuleHint = computed(() => {
 const panelStyle = computed(() => ({
 	'--result-color': openedPrize.value?.color || '#6b7a90',
 }))
+
+const formatHistoryTime = (value) => {
+	if (!value) return '--:--'
+	const date = new Date(value)
+	const hh = `${date.getHours()}`.padStart(2, '0')
+	const mm = `${date.getMinutes()}`.padStart(2, '0')
+	return `${hh}:${mm}`
+}
 
 let introTimeline = null
 let bowlFloatTween = null
@@ -356,7 +461,7 @@ const openCapsule = async () => {
 
 	dispensedPrize.value = null
 	openedPrize.value = targetPrize
-	history.value = [{ ...targetPrize, historyId: `${targetPrize.id}-${Date.now()}` }, ...history.value].slice(0, 4)
+	history.value = [{ ...targetPrize, historyId: `${targetPrize.id}-${Date.now()}`, droppedAt: Date.now() }, ...history.value].slice(0, 6)
 
 	await nextTick()
 
@@ -370,6 +475,13 @@ const clearHistory = () => {
 }
 
 onMounted(() => {
+	buildMachineBalls()
+	if (typeof ResizeObserver !== 'undefined' && bowlRef.value) {
+		bowlResizeObserver = new ResizeObserver(() => {
+			buildMachineBalls()
+		})
+		bowlResizeObserver.observe(bowlRef.value)
+	}
 	playIntro()
 })
 
@@ -378,6 +490,7 @@ onBeforeUnmount(() => {
 	bowlFloatTween?.kill()
 	currentRollTimeline?.kill()
 	shineTween?.kill()
+	bowlResizeObserver?.disconnect()
 })
 </script>
 
@@ -395,6 +508,7 @@ onBeforeUnmount(() => {
 .gashapon-scroll {
 	position: relative;
 	height: 100%;
+	box-sizing: border-box;
 	padding: 12px 0;
 	overflow-x: hidden;
 	overflow-y: auto;
@@ -465,12 +579,17 @@ onBeforeUnmount(() => {
 	margin: 0 auto;
 	padding: 25px 0 10px;
 	min-height: calc(100% - 24px);
+	box-sizing: border-box;
+	display: flex;
 }
 
 .machine-layout {
 	display: flex;
 	flex-direction: column;
+	flex: 1;
+	min-height: 0;
 	gap: 22px;
+	justify-content: space-around;
 }
 
 .machine-shell {
@@ -576,6 +695,9 @@ onBeforeUnmount(() => {
 .machine-main {
 	display: grid;
 	grid-template-columns: minmax(0, 660px) minmax(280px, 360px);
+	// flex: 1;
+	min-height: 0;
+	height: calc(100% - 206px);
 	gap: 58px;
 	align-items: start;
 }
@@ -619,10 +741,12 @@ onBeforeUnmount(() => {
 
 .machine-window {
 	position: relative;
-	height: 300px;
+	height: 344px;
 	padding: 18px;
 	border-radius: 26px;
-	background: linear-gradient(180deg, #fdecdc 0%, #fffdf9 100%);
+	background:
+		radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.95), transparent 28%),
+		linear-gradient(180deg, #fff6ea 0%, #fffdf9 54%, #ffe8d4 100%);
 	border: 6px solid #fde0c0;
 	box-shadow: inset 0 -14px 24px rgba(200, 94, 39, 0.12);
 	overflow: hidden;
@@ -630,28 +754,57 @@ onBeforeUnmount(() => {
 
 .window-shine {
 	position: absolute;
-	inset: 14px auto 14px 14px;
-	width: 34%;
-	border-radius: 28px;
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.08));
+	inset: 10px auto 16px 12px;
+	width: 32%;
+	border-radius: 30px;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.1)),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.35), transparent);
 	filter: blur(2px);
+	opacity: 0.85;
 }
 
 .capsule-bowl {
 	position: absolute;
 	left: 50%;
-	bottom: 24px;
-	width: 82%;
-	height: 64%;
+	bottom: 35px;
+	width: 65%;
+	height: 70%;
 	transform: translateX(-50%);
-	border-radius: 32px 32px 72px 72px;
+	border-radius: 32px 32px 86px 86px;
 	background:
-		radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.85), transparent 45%),
-		linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.1));
-	border: 2px solid rgba(255, 255, 255, 0.78);
+		radial-gradient(circle at 50% 6%, rgba(255, 255, 255, 0.92), transparent 28%),
+		linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.12));
+	border: 2px solid rgba(255, 255, 255, 0.82);
 	box-shadow:
-		inset 0 -12px 24px rgba(63, 110, 158, 0.12),
+		inset 0 -16px 24px rgba(63, 110, 158, 0.12),
+		inset 0 10px 18px rgba(255, 255, 255, 0.3),
 		0 16px 32px rgba(77, 109, 138, 0.12);
+	isolation: isolate;
+	overflow: hidden;
+}
+
+.capsule-bowl::before,
+.capsule-bowl::after {
+	content: '';
+	position: absolute;
+	pointer-events: none;
+}
+
+.capsule-bowl::before {
+	inset: 10px 14px auto;
+	height: 28%;
+	border-radius: 28px 28px 40px 40px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0));
+}
+
+.capsule-bowl::after {
+	left: 6%;
+	right: 6%;
+	bottom: 8px;
+	height: 26%;
+	border-radius: 999px;
+	background: radial-gradient(circle at 50% 0%, rgba(106, 141, 177, 0.24), rgba(106, 141, 177, 0) 72%);
 }
 
 .bowl-ball {
@@ -660,15 +813,54 @@ onBeforeUnmount(() => {
 	top: var(--ball-y);
 	width: var(--ball-size);
 	height: var(--ball-size);
+	z-index: var(--ball-z);
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, var(--ball-outline-alpha));
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 48%),
+		linear-gradient(135deg, color-mix(in srgb, var(--ball-shell) 88%, white), var(--ball-shell));
+	box-shadow:
+		inset -8px -10px 16px rgba(0, 0, 0, 0.16),
+		inset 8px 8px 14px rgba(255, 255, 255, 0.24),
+		0 12px 20px rgba(39, 71, 99, var(--ball-shadow-alpha));
+	opacity: var(--ball-opacity);
+	filter: saturate(1.05) blur(var(--ball-blur));
+	animation: bowlFloat 2.05s ease-in-out infinite;
+	animation-delay: var(--ball-delay);
+}
+
+.bowl-ball::before,
+.bowl-ball::after {
+	content: '';
+	position: absolute;
+	pointer-events: none;
+}
+
+.bowl-ball::before {
+	left: 10%;
+	right: 10%;
+	top: 47%;
+	height: 10%;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.68);
+	box-shadow:
+		0 -1px 0 rgba(255, 255, 255, 0.9),
+		0 1px 0 rgba(102, 132, 165, 0.18);
+}
+
+.bowl-ball::after {
+	left: 50%;
+	top: 50%;
+	width: 44%;
+	height: 44%;
+	transform: translate(-50%, -28%);
 	border-radius: 50%;
 	background:
-		radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.9), transparent 28%),
-		linear-gradient(135deg, var(--ball-a), var(--ball-b));
+		radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 58%),
+		linear-gradient(135deg, color-mix(in srgb, var(--ball-core) 78%, white), var(--ball-core));
 	box-shadow:
-		inset -5px -9px 16px rgba(0, 0, 0, 0.12),
-		0 10px 18px rgba(39, 71, 99, 0.14);
-	animation: bowlFloat 2.2s ease-in-out infinite;
-	animation-delay: var(--ball-delay);
+		inset -4px -6px 8px rgba(0, 0, 0, 0.12),
+		0 2px 4px rgba(79, 104, 132, 0.12);
 }
 
 .pointer {
@@ -869,6 +1061,7 @@ onBeforeUnmount(() => {
 .result-panel {
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
 	gap: 18px;
 	padding: 24px;
 	border-radius: 34px;
@@ -1002,13 +1195,50 @@ onBeforeUnmount(() => {
 }
 
 .history-dialog-body {
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	gap: 14px;
+	height: 520px;
+}
+
+.history-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+	height: 84px;
+	flex: 0 0 auto;
+}
+
+.history-summary-card {
+	display: grid;
+	gap: 6px;
+	padding: 12px;
+	border-radius: 18px;
+	background: rgba(255, 255, 255, 0.72);
+	border: 1px solid rgba(255, 255, 255, 0.7);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.history-summary-card.accent {
+	background: linear-gradient(135deg, rgba(255, 226, 190, 0.92), rgba(255, 184, 116, 0.82));
+}
+
+.history-summary-label {
+	font-size: 11px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgba(103, 48, 16, 0.62);
+}
+
+.history-summary-card strong {
+	font-size: 16px;
+	color: #66310f;
 }
 
 .history-dialog-actions {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: center;
+	flex: 0 0 auto;
 }
 
 .history-clear {
@@ -1022,15 +1252,36 @@ onBeforeUnmount(() => {
 .history-list {
 	display: grid;
 	gap: 10px;
+	flex: 1 1 auto;
+	align-content: start;
+	min-height: 0;
+	padding-right: 4px;
+	overflow-y: auto;
+}
+
+.history-list::-webkit-scrollbar {
+	width: 8px;
+}
+
+.history-list::-webkit-scrollbar-track {
+	background: rgba(255, 240, 229, 0.72);
+	border-radius: 999px;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+	border-radius: 999px;
+	background: linear-gradient(180deg, rgba(225, 123, 68, 0.95), rgba(171, 77, 30, 0.95));
 }
 
 .history-item {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 12px;
 	padding: 12px;
 	border-radius: 18px;
 	background: rgba(255, 255, 255, 0.74);
+	border: 1px solid rgba(255, 255, 255, 0.78);
+	box-shadow: 0 10px 20px rgba(130, 67, 27, 0.08);
 }
 
 .history-icon {
@@ -1043,6 +1294,20 @@ onBeforeUnmount(() => {
 	font-size: 24px;
 }
 
+.history-content {
+	display: grid;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+}
+
+.history-main {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 12px;
+}
+
 .history-name {
 	font-size: 15px;
 	font-weight: 700;
@@ -1053,6 +1318,44 @@ onBeforeUnmount(() => {
 .history-empty {
 	font-size: 13px;
 	color: rgba(103, 48, 16, 0.68);
+}
+
+.history-empty {
+	display: grid;
+	place-items: center;
+	flex: 1 1 auto;
+	min-height: 0;
+	text-align: center;
+}
+
+.history-time {
+	flex: 0 0 auto;
+	padding: 4px 8px;
+	border-radius: 999px;
+	background: rgba(255, 245, 235, 0.92);
+	font-size: 12px;
+	font-weight: 700;
+	color: #9a4d1f;
+}
+
+.history-desc {
+	line-height: 1.5;
+	font-size: 13px;
+	color: rgba(103, 48, 16, 0.82);
+}
+
+.history-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.history-tags span {
+	padding: 6px 10px;
+	border-radius: 999px;
+	background: rgba(255, 247, 240, 0.9);
+	font-size: 12px;
+	color: #8b471d;
 }
 
 @keyframes twinkle {
