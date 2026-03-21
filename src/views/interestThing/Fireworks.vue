@@ -31,6 +31,9 @@ const rockets = []
 const particles = []
 const maxParticles = 600
 const explosionColors = [12, 24, 36, 48, 195, 210, 280, 320]
+const HORIZONTAL_SAFE_PADDING = 72
+const BURST_TOP_RATIO = 0.18
+const BURST_BOTTOM_RATIO = 0.58
 
 let context = null
 let animationFrameId = 0
@@ -47,6 +50,18 @@ function randomBetween(min, max) {
 
 function randomFrom(list) {
   return list[Math.floor(Math.random() * list.length)]
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function getSafeLaunchX(x = screenWidth / 2) {
+  return clamp(x, HORIZONTAL_SAFE_PADDING, screenWidth - HORIZONTAL_SAFE_PADDING)
+}
+
+function getExplosionTargetY() {
+  return randomBetween(screenHeight * BURST_TOP_RATIO, screenHeight * BURST_BOTTOM_RATIO)
 }
 
 class Particle {
@@ -116,12 +131,13 @@ class Particle {
 class Rocket extends Particle {
   constructor(x) {
     super({
-      x,
+      x: getSafeLaunchX(x),
       y: screenHeight + 20,
     })
 
     this.explosionColor = randomFrom(explosionColors)
     this.blastScale = randomBetween(0.72, 1.5)
+    this.targetY = getExplosionTargetY()
   }
 
   explode() {
@@ -170,9 +186,11 @@ function resizeCanvas() {
 function launchRocket(x = Math.random() * screenWidth) {
   if (!screenWidth || rockets.length >= 12) return
 
-  const rocket = new Rocket(x)
+  const launchX = getSafeLaunchX(x)
+  const edgeRatio = Math.abs(launchX - screenWidth / 2) / (screenWidth / 2)
+  const rocket = new Rocket(launchX)
   rocket.vel.y = randomBetween(-10, -6.5)
-  rocket.vel.x = randomBetween(-3, 3)
+  rocket.vel.x = randomBetween(-2.2, 2.2) * (1 - edgeRatio * 0.45)
   rocket.size = randomBetween(5, 7)
   rocket.shrink = 0.999
   rocket.gravity = 0.03
@@ -204,12 +222,13 @@ function updateRockets() {
 
   rockets.forEach((rocket) => {
     rocket.update()
+    rocket.pos.x = clamp(rocket.pos.x, HORIZONTAL_SAFE_PADDING * 0.72, screenWidth - HORIZONTAL_SAFE_PADDING * 0.72)
     rocket.render(context)
 
     const shouldExplode =
-      rocket.pos.y < screenHeight / 5 ||
+      rocket.pos.y <= rocket.targetY ||
       rocket.vel.y >= 0 ||
-      Math.random() <= 0.01
+      rocket.pos.y < screenHeight * 0.12
 
     if (shouldExplode) {
       rocket.explode()

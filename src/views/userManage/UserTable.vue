@@ -27,7 +27,12 @@
                             <el-button size="small" @click="handleEdit(scope.$index, scope.row)">
                                 编辑
                             </el-button>
-                            <el-button size="small" type="danger" @click="handleDelete(scope.$index, scope.row)">
+                            <el-button
+                                size="small"
+                                type="danger"
+                                :disabled="isAdminUser(scope.row)"
+                                @click="handleDelete(scope.$index, scope.row)"
+                            >
                                 删除
                             </el-button>
                         </template>
@@ -52,6 +57,7 @@
 
 <script lang="js" setup>
     import { userListGet, userDelete } from "@/apis/userApis.js"
+    import { ensureApiSuccess } from '@/common/requests/requests.js'
     import { computed, ref, reactive } from 'vue'
     import { ElMessage, ElMessageBox } from 'element-plus'
     import UserRegister from '@/components/user/UserRegister.vue'
@@ -87,11 +93,21 @@
         userId.value = row.id
     }
 
+    const isAdminUser = (row) => {
+        const auth = row?.auth ?? row?.authority ?? row?.role
+        return Number(auth) === 1
+    }
+
     const handleDelete = async (index, row) => {
         console.log(index, row)
+        if (isAdminUser(row)) {
+            ElMessage.warning('管理员用户不允许删除')
+            return
+        }
         ElMessageBox.confirm('确定要删除该用户吗？')
         .then(async () => {
-            await userDelete(row.id)
+            const res = await userDelete(row.id)
+            ensureApiSuccess(res, '删除失败')
             ElMessage({
                 message: '删除成功',
                 type: 'success',

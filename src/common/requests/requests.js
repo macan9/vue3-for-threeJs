@@ -25,6 +25,15 @@ const buildFallback = (url, error) => {
   }
 }
 
+export const isApiSuccess = (response) => {
+  return response?.success === true || response?.code === 0 || response?.code === 200 || response?.code === 304
+}
+
+export const ensureApiSuccess = (response, fallbackMessage = '请求失败') => {
+  if (isApiSuccess(response)) return response
+  throw new Error(response?.message || fallbackMessage)
+}
+
 export const postApi = async (url,data)=>{
   try{
     const res = await api.post(url,data)

@@ -77,8 +77,10 @@ const score = ref(0)
 const highScore = ref(0)
 const gameStarted = ref(false)
 const isGameOver = ref(false)
+const maxClimbDistance = ref(0)
 
 const STORAGE_KEY = 'graffiti-jump-high-score'
+const LAST_SCORE_STORAGE_KEY = 'graffiti-jump-last-score'
 const VIEW_WIDTH = 420
 const VIEW_HEIGHT = 680
 const PLATFORM_WIDTH = 78
@@ -93,9 +95,10 @@ const CAMERA_TRIGGER_Y = 244
 const PLATFORM_GAP_MIN = 62
 const PLATFORM_GAP_MAX = 96
 const WALL_PADDING = 10
-const SHORT_PLATFORM_SCORE = 75
-const FAST_PLATFORM_SCORE = 125
-const FAST_SHORT_PLATFORM_SCORE = 175
+
+const SHORT_PLATFORM_SCORE = 120
+const FAST_PLATFORM_SCORE = 200
+const FAST_SHORT_PLATFORM_SCORE = 350
 
 const moveLeft = ref(false)
 const moveRight = ref(false)
@@ -137,14 +140,48 @@ function clamp(value, min, max) {
 }
 
 function loadHighScore() {
-	const rawValue = localStorage.getItem(STORAGE_KEY)
-	const parsed = Number(rawValue || 0)
-	highScore.value = Number.isFinite(parsed) ? parsed : 0
+	try {
+		const rawHighScore = localStorage.getItem(STORAGE_KEY)
+		const rawLastScore = localStorage.getItem(LAST_SCORE_STORAGE_KEY)
+		const parsedHighScore = Number(rawHighScore || 0)
+		const parsedLastScore = Number(rawLastScore || 0)
+
+		highScore.value = Number.isFinite(parsedHighScore) ? parsedHighScore : 0
+		score.value = Number.isFinite(parsedLastScore) ? parsedLastScore : 0
+	} catch (error) {
+		highScore.value = 0
+		score.value = 0
+	}
 }
 
 function saveHighScore(value) {
 	highScore.value = value
-	localStorage.setItem(STORAGE_KEY, String(value))
+	try {
+		localStorage.setItem(STORAGE_KEY, String(value))
+	} catch (error) {
+		// Ignore storage failures so the game loop is not affected.
+	}
+}
+
+function saveLastScore(value) {
+	try {
+		localStorage.setItem(LAST_SCORE_STORAGE_KEY, String(value))
+	} catch (error) {
+		// Ignore storage failures so the game loop is not affected.
+	}
+}
+
+function calculateScoreFromHeight(height) {
+	const climb = Math.max(0, Math.floor(height))
+	const stageOne = Math.min(climb, 600)
+	const stageTwo = Math.min(Math.max(climb - 600, 0), 1200)
+	const stageThree = Math.max(climb - 1800, 0)
+
+	return (
+		Math.floor(stageOne / 18) +
+		Math.floor(stageTwo / 15) +
+		Math.floor(stageThree / 12)
+	)
 }
 
 function createPlatform(y, previousX = null) {
@@ -248,12 +285,14 @@ function resetPlatforms() {
 function updateScore(nextScore) {
 	const rounded = Math.max(0, Math.floor(nextScore))
 	score.value = rounded
+	saveLastScore(rounded)
 	if (rounded > highScore.value) {
 		saveHighScore(rounded)
 	}
 }
 
 function restartGame() {
+	maxClimbDistance.value = 0
 	updateScore(0)
 	gameStarted.value = true
 	isGameOver.value = false
@@ -338,7 +377,8 @@ function applyCameraShift() {
 
 	const offset = CAMERA_TRIGGER_Y - player.y
 	player.y = CAMERA_TRIGGER_Y
-	updateScore(score.value + offset * 0.12)
+	maxClimbDistance.value += offset
+	updateScore(calculateScoreFromHeight(maxClimbDistance.value))
 
 	for (const platform of platforms) {
 		platform.y += offset
@@ -395,6 +435,7 @@ function updatePlayer(deltaFactor) {
 	applyCameraShift()
 
 	if (player.y > VIEW_HEIGHT + 90) {
+		saveLastScore(score.value)
 		isGameOver.value = true
 		gameStarted.value = false
 	}
@@ -658,6 +699,10 @@ onBeforeUnmount(() => {
 .touch-button {
 	border: 0;
 	cursor: pointer;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
+	-webkit-tap-highlight-color: transparent;
 	transition:
 		transform 0.18s ease,
 		box-shadow 0.18s ease,
@@ -690,6 +735,8 @@ onBeforeUnmount(() => {
 		linear-gradient(180deg, #fbf8e8, #eef5d8 48%, #dceec6);
 	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 	overflow: hidden;
+	-webkit-user-select: none;
+	user-select: none;
 }
 
 .game-canvas {
@@ -703,6 +750,7 @@ onBeforeUnmount(() => {
 }
 
 .hud {
+	width: 150px;
 	position: absolute;
 	top: 94px;
 	left: 22px;

@@ -109,6 +109,7 @@
 import { defineProps, toRef, ref, reactive, defineEmits, onBeforeUnmount, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { userInfoGet, userInfoPut } from '@/apis/userApis.js'
+import { ensureApiSuccess } from '@/common/requests/requests.js'
 import { user_authority } from '@/common/plugins/user_config.js'
 import api from '@/common/requests/axiosInstance.js'
 import { encryptPasswordFields, validatePassword, validateUsername } from '@/common/utils/authSecurity.js'
@@ -451,12 +452,14 @@ const submitUser = async (formEl) => {
     }
 
     const encryptedData = await encryptPasswordFields(newData, ['oldPassword', 'newPassword', 'password'])
-    const res = await userInfoPut(userId.value, encryptedData)
-
-    if (res?.success === true || res?.data) {
+    try {
+      const res = await userInfoPut(userId.value, encryptedData)
+      ensureApiSuccess(res, '修改失败')
       ElMessage({ message: '修改成功', type: 'success' })
+      closeDialog()
+    } catch (error) {
+      ElMessage.error(String(error?.message || '修改失败'))
     }
-    closeDialog()
   })
 }
 

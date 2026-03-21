@@ -248,9 +248,27 @@ const machineBallPalette = [
 	{ shell: '#63d2ff', core: '#8af2c7' },
 	{ shell: '#8d9eff', core: '#ff9b86' },
 	{ shell: '#8de3ff', core: '#ffe08a' },
+	{ shell: '#b7efb0', core: '#7adf96' },
+	{ shell: '#ffe79a', core: '#ffd05a' },
 ]
 
 let bowlResizeObserver = null
+
+const pickRandomBallPalette = (previousIndex = -1) => {
+	if (machineBallPalette.length === 1) {
+		return { palette: machineBallPalette[0], index: 0 }
+	}
+
+	let nextIndex = Math.floor(Math.random() * machineBallPalette.length)
+	while (nextIndex === previousIndex) {
+		nextIndex = Math.floor(Math.random() * machineBallPalette.length)
+	}
+
+	return {
+		palette: machineBallPalette[nextIndex],
+		index: nextIndex,
+	}
+}
 
 const buildMachineBalls = () => {
 	const bowlEl = bowlRef.value
@@ -284,6 +302,7 @@ const buildMachineBalls = () => {
 		const step = Math.max(ballSize * (1 - rowConfig.overlap), 18)
 		const count = Math.max(2, Math.floor((usableWidth - ballSize) / step) + 1)
 		const rowSpan = Math.max(0, usableWidth - ballSize)
+		let previousPaletteIndex = -1
 
 		for (let colIndex = 0; colIndex < count; colIndex += 1) {
 			const progress = count === 1 ? 0.5 : colIndex / (count - 1)
@@ -294,7 +313,8 @@ const buildMachineBalls = () => {
 			const archLift = centerPull * rowIndex * 3.4
 			const jitterY = rowIndex === 0 ? 0 : Math.random() * 0.8 - 0.4
 			const ballY = Math.max(0, y - archLift + jitterY)
-			const paletteItem = machineBallPalette[(rowIndex * 4 + colIndex) % machineBallPalette.length]
+			const { palette: paletteItem, index: paletteIndex } = pickRandomBallPalette(previousPaletteIndex)
+			previousPaletteIndex = paletteIndex
 			const zJitter = Math.floor(Math.random() * 4)
 
 			nextBalls.push({

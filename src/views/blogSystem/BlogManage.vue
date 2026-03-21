@@ -100,6 +100,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { postCreateReq, postDelete, postInfoPut, postListGet } from '@/apis/blogApis.js'
+import { ensureApiSuccess } from '@/common/requests/requests.js'
 import BlogEditorDialog from '@/views/blogSystem/components/BlogEditorDialog.vue'
 import BlogPreviewDialog from '@/views/blogSystem/components/BlogPreviewDialog.vue'
 import { formatDateTime, getContent, getRowId } from '@/views/blogSystem/blogHelpers.js'
@@ -224,14 +225,16 @@ const handleEditorSubmit = async (formData) => {
 	submitting.value = true
 	try {
 		if (editorMode.value === 'create') {
-			await postCreateReq({ ...formData })
+			const res = await postCreateReq({ ...formData })
+			ensureApiSuccess(res, '新增失败')
 			ElMessage.success('新增成功')
 		} else {
 			if (!editingId.value) {
 				ElMessage.warning('未找到文章 id')
 				return
 			}
-			await postInfoPut(editingId.value, { ...formData })
+			const res = await postInfoPut(editingId.value, { ...formData })
+			ensureApiSuccess(res, '保存失败')
 			ElMessage.success('保存成功')
 		}
 		editorVisible.value = false
@@ -253,7 +256,8 @@ const handleDelete = async (row) => {
 
 	ElMessageBox.confirm('确定要删除这篇文章吗？')
 		.then(async () => {
-			await postDelete(id)
+			const res = await postDelete(id)
+			ensureApiSuccess(res, '删除失败')
 			ElMessage.success('删除成功')
 			getPostData()
 		})
