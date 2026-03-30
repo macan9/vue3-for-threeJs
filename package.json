@@ -6,7 +6,8 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "deploy": "npm run build && scp -r dist/* root@139.196.158.225:/var/www/front/"
+    "deploy": "npm run build && scp -r dist/* root@139.196.158.225:/var/www/front/",
+    "deploy:rsync": "bash ./deploy.sh"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.1.0",
