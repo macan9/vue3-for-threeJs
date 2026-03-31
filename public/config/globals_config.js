@@ -37,14 +37,14 @@ const resolveRuntimeHostname = () => {
 const runtimeConfig = getRuntimeAppConfig()
 const service_mode = normalizeMode(runtimeConfig.mode)
 const isOnlineService = service_mode === 'online'
-const useHttpProtocol = Boolean(runtimeConfig.http)
+const useHttpsProtocol = Boolean(runtimeConfig.use_https)
 const port = normalizePort(runtimeConfig.port)
 const runtimeHostname = resolveRuntimeHostname()
 const onlineHost = normalizeHost(runtimeConfig.serve_ip, runtimeHostname)
 const localHost = normalizeHost(runtimeConfig.local_ip, runtimeHostname)
 
-const protocol = useHttpProtocol ? 'http' : 'https'
-const wsProtocol = useHttpProtocol ? 'ws' : 'wss'
+const protocol = useHttpsProtocol ? 'https' : 'http'
+const wsProtocol = useHttpsProtocol ? 'wss' : 'ws'
 const serviceHost = isOnlineService ? onlineHost : localHost
 
 const selectedServiceHost = `${protocol}://${serviceHost}:${port}`
@@ -55,7 +55,7 @@ export const globals_config = {
     service_mode,
     protocol,
     ws_protocol: wsProtocol,
-    use_http_protocol: useHttpProtocol,
+    use_https_protocol: useHttpsProtocol,
     service_host: serviceHost,
     online_host: onlineHost,
     local_host: localHost,
