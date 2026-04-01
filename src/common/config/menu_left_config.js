@@ -74,6 +74,7 @@ export const menu_left_config = [
                 value: '3-1',
                 path: '/threeGuiBase',
                 icon: 'Monitor',
+                moblieHide: true,
             },
             {
                 label: '躲避尖刺',

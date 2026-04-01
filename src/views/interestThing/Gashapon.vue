@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<section class="gashapon-page home-view-page">
 		<div class="gashapon-scroll">
 			<div class="gashapon-bg">
@@ -14,8 +14,8 @@
 							<div class="brand-panel">
 								<div class="brand-mark">G</div>
 								<div>
-									<p class="brand-title">梦幻扭蛋机</p>
-									<p class="brand-subtitle">转一下，把惊喜装进口袋里</p>
+									<p class="brand-title">Dream Gacha</p>
+									<p class="brand-subtitle">Turn the handle and bring surprises home</p>
 								</div>
 							</div>
 
@@ -76,7 +76,7 @@
 									ref="handleRef"
 									class="handle-button"
 									type="button"
-									:disabled="isRolling"
+									:disabled="isRolling || !canDraw"
 									@click="rollCapsule"
 								>
 									<span class="handle-knob" />
@@ -87,7 +87,7 @@
 							<div class="machine-bottom">
 								<div class="tray-header">
 									<span class="tray-label">Capsule Out</span>
-									<span class="tray-hint">{{ isRolling ? '转动中...' : capsuleHint }}</span>
+									<span class="tray-hint">{{ isRolling ? 'Rolling...' : capsuleHint }}</span>
 								</div>
 
 								<div ref="trayRef" class="capsule-tray">
@@ -104,7 +104,7 @@
 										<span class="capsule-bottom" />
 										<span class="capsule-core">{{ dispensedPrize.icon }}</span>
 									</button>
-									<p v-else class="tray-empty">胶囊会从这里滚出来</p>
+									<p v-else class="tray-empty">The capsule will drop here</p>
 								</div>
 							</div>
 						</div>
@@ -113,17 +113,17 @@
 							<div class="my-gashapon-panel">
 								<div class="panel-head">
 									<p class="panel-kicker">My Collection</p>
-									<h2>我的扭蛋</h2>
+									<h2>My Gacha</h2>
 								</div>
 
 								<div class="collection-card">
 									<div class="collection-summary">
 										<div class="collection-stat">
-											<span class="collection-stat-label">总数</span>
+											<span class="collection-stat-label">Owned</span>
 											<strong>{{ collectionSummary.total }}</strong>
 										</div>
 										<div class="collection-stat">
-											<span class="collection-stat-label">最新入袋</span>
+											<span class="collection-stat-label">Latest</span>
 											<strong>{{ collectionSummary.latestName }}</strong>
 										</div>
 									</div>
@@ -131,7 +131,7 @@
 									<div v-if="ownedPrizes.length" class="collection-grid">
 										<div
 											v-for="item in ownedPrizes"
-											:key="item.collectionId"
+											:key="item.inventoryId"
 											class="collection-item"
 											:style="{ '--collection-color': item.color }"
 										>
@@ -139,26 +139,64 @@
 											<div class="collection-item-content">
 												<p class="collection-item-name">{{ item.name }}</p>
 												<p class="collection-item-meta">
-													{{ item.rarity }} · 编号 {{ item.id.toString().padStart(2, '0') }}
+													{{ item.rarity }} 路 No. {{ String(item.displayId || item.id || 0).padStart(2, '0') }}
 												</p>
+												<p class="collection-item-meta">Sell for {{ item.sellPoints }} pts</p>
+											</div>
+											<div class="collection-item-actions">
+												<button
+													type="button"
+													class="collection-sell"
+													:disabled="sellingInventoryId === item.inventoryId"
+													@click="sellPrize(item)"
+												>
+													{{ sellingInventoryId === item.inventoryId ? 'Selling...' : 'Sell' }}
+												</button>
 											</div>
 										</div>
 									</div>
 									<div v-else class="collection-empty">
 										<div class="placeholder-icon">?</div>
-										<h3>暂无扭蛋</h3>
-										<p class="result-desc">转动把手后，新的扭蛋会出现在这里，后续也可以直接接后台返回数据。</p>
+										<h3>No Capsules Yet</h3>
+										<p class="result-desc">New prizes from the backend inventory will appear here after each draw.</p>
 									</div>
 								</div>
 							</div>
 
 							<div class="record-panel">
-								<button type="button" class="text-action-button" @click="showHistoryDialog = true">
-									扭蛋记录
-								</button>
-								<button type="button" class="text-action-button" @click="showTradeDialog = true">
-									交易记录
-								</button>
+								<div class="profile-summary">
+									<div class="profile-stat">
+										<span class="collection-stat-label">Points</span>
+										<strong>{{ gachaProfile.points }}</strong>
+									</div>
+									<div class="profile-stat">
+										<span class="collection-stat-label">Draws Left</span>
+										<strong>{{ gachaProfile.drawsRemainingToday }}</strong>
+									</div>
+									<div class="profile-stat">
+										<span class="collection-stat-label">Cost</span>
+										<strong>{{ gachaProfile.drawCost }}</strong>
+									</div>
+								</div>
+								<p class="profile-refresh">
+									{{ isLoggedIn ? `Next reset: ${nextRefreshText}` : 'Log in to sync your points, inventory, and history' }}
+								</p>
+								<div class="panel-actions">
+									<button type="button" class="text-action-button" :disabled="!isLoggedIn" @click="showHistoryDialog = true">
+										Draw History
+									</button>
+									<button type="button" class="text-action-button" :disabled="!isLoggedIn" @click="showTradeDialog = true">
+										Trade History
+									</button>
+									<button
+										type="button"
+										class="text-action-button action-button-secondary"
+										:disabled="!isLoggedIn || isRefreshingData"
+										@click="refreshUserData"
+									>
+										{{ isRefreshingData ? 'Refreshing...' : 'Refresh Data' }}
+									</button>
+								</div>
 								<p class="history-entry-tip">{{ historyEntryTip }}</p>
 							</div>
 						</div>
@@ -169,7 +207,7 @@
 
 		<el-dialog
 			v-model="showResultDialog"
-			title="本次扭蛋结果"
+			title="Draw Result"
 			width="420px"
 			append-to-body
 			class="result-dialog"
@@ -181,37 +219,39 @@
 					<h3>{{ openedPrize.name }}</h3>
 					<p class="result-desc">{{ openedPrize.description }}</p>
 					<div class="result-tags">
-						<span>主题 {{ openedPrize.theme }}</span>
-						<span>编号 {{ openedPrize.id.toString().padStart(2, '0') }}</span>
+						<span>Theme {{ openedPrize.theme }}</span>
+						<span>No. {{ String(openedPrize.displayId || openedPrize.id || 0).padStart(2, '0') }}</span>
 					</div>
 				</template>
 			</div>
 		</el-dialog>
 
-		<el-dialog v-model="showHistoryDialog" title="扭蛋记录" width="560px" append-to-body style="margin-top: 12%;">
+		<el-dialog v-model="showHistoryDialog" title="Draw History" width="560px" append-to-body style="margin-top: 12%;">
 			<div class="history-dialog-body">
-				<div v-if="history.length" class="history-summary">
+				<div v-if="historyRecords.length" class="history-summary">
 					<div class="history-summary-card">
-						<span class="history-summary-label">记录数</span>
-						<strong>{{ history.length }}</strong>
+						<span class="history-summary-label">Records</span>
+						<strong>{{ historyRecords.length }}</strong>
 					</div>
 					<div class="history-summary-card">
-						<span class="history-summary-label">最近稀有度</span>
-						<strong>{{ history[0].rarity }}</strong>
+						<span class="history-summary-label">Latest Rarity</span>
+						<strong>{{ historyRecords[0].rarity }}</strong>
 					</div>
 					<div class="history-summary-card accent">
-						<span class="history-summary-label">最新主题</span>
-						<strong>{{ history[0].theme }}</strong>
+						<span class="history-summary-label">Latest Theme</span>
+						<strong>{{ historyRecords[0].theme }}</strong>
 					</div>
 				</div>
 
 				<div class="history-dialog-actions">
-					<button type="button" class="history-clear" @click="clearHistory">清空记录</button>
+					<button type="button" class="history-clear" :disabled="isRefreshingData" @click="refreshUserData">
+						{{ isRefreshingData ? 'Refreshing...' : 'Refresh' }}
+					</button>
 				</div>
 
-				<div v-if="history.length" class="history-list">
+				<div v-if="historyRecords.length" class="history-list">
 					<div
-						v-for="entry in history"
+						v-for="entry in historyRecords"
 						:key="entry.historyId"
 						class="history-item"
 						:style="{ '--history-color': entry.color }"
@@ -221,37 +261,43 @@
 							<div class="history-main">
 								<div>
 									<p class="history-name">{{ entry.name }}</p>
-									<p class="history-meta">{{ entry.rarity }} · 编号 {{ entry.id.toString().padStart(2, '0') }}</p>
+									<p class="history-meta">{{ entry.rarity }} 路 No. {{ String(entry.displayId || entry.id || 0).padStart(2, '0') }}</p>
 								</div>
 								<span class="history-time">{{ formatHistoryTime(entry.droppedAt) }}</span>
 							</div>
 							<p class="history-desc">{{ entry.description }}</p>
 							<div class="history-tags">
-								<span>主题 {{ entry.theme }}</span>
-								<span>颜色 {{ entry.color }}</span>
+								<span>Theme {{ entry.theme }}</span>
+								<span>Color {{ entry.color }}</span>
 							</div>
 						</div>
 					</div>
 				</div>
-				<p v-else class="history-empty">还没有扭蛋记录，先摇一颗试试。</p>
+				<p v-else class="history-empty">No draw history yet. Spin one to get started.</p>
 			</div>
 		</el-dialog>
 
-		<el-dialog v-model="showTradeDialog" title="交易记录" width="560px" append-to-body style="margin-top: 12%;">
+		<el-dialog v-model="showTradeDialog" title="Trade History" width="560px" append-to-body style="margin-top: 12%;">
 			<div class="history-dialog-body">
 				<div class="history-summary">
 					<div class="history-summary-card">
-						<span class="history-summary-label">记录数</span>
+						<span class="history-summary-label">Records</span>
 						<strong>{{ tradeSummary.total }}</strong>
 					</div>
 					<div class="history-summary-card">
-						<span class="history-summary-label">最近类型</span>
+						<span class="history-summary-label">Latest Type</span>
 						<strong>{{ tradeSummary.latestType }}</strong>
 					</div>
 					<div class="history-summary-card accent">
-						<span class="history-summary-label">最近状态</span>
+						<span class="history-summary-label">Latest Status</span>
 						<strong>{{ tradeSummary.latestStatus }}</strong>
 					</div>
+				</div>
+
+				<div class="history-dialog-actions">
+					<button type="button" class="history-clear" :disabled="isRefreshingData" @click="refreshUserData">
+						{{ isRefreshingData ? 'Refreshing...' : 'Refresh' }}
+					</button>
 				</div>
 
 				<div v-if="tradeRecords.length" class="history-list">
@@ -261,7 +307,7 @@
 						class="history-item trade-item"
 						:style="{ '--history-color': record.color || '#ffb45f' }"
 					>
-						<span class="history-icon">{{ record.icon || '↔' }}</span>
+						<span class="history-icon">{{ record.icon || 'trade' }}</span>
 						<div class="history-content">
 							<div class="history-main">
 								<div>
@@ -274,7 +320,7 @@
 						</div>
 					</div>
 				</div>
-				<p v-else class="history-empty">暂无交易记录，后续可直接接入后台接口。</p>
+				<p v-else class="history-empty">No trade history yet. It will appear here after draws or sells.</p>
 			</div>
 		</el-dialog>
 	</section>
@@ -288,7 +334,28 @@ export default {
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { gsap } from 'gsap'
+
+import {
+	gachaDrawReq,
+	gachaInventoryGet,
+	gachaInventorySellReq,
+	gachaPrizeListGet,
+	gachaProfileGet,
+	gachaTransactionsGet,
+} from '@/apis/gachaApis'
+import { ensureApiSuccess } from '@/common/requests/requests.js'
+
+const createEmptyProfile = () => ({
+	points: 0,
+	drawCost: 50,
+	dailyDrawLimit: 0,
+	drawsUsedToday: 0,
+	drawsRemainingToday: 0,
+	ownedCount: 0,
+	nextRefreshAt: '',
+})
 
 const machineShellRef = ref(null)
 const machineBodyRef = ref(null)
@@ -301,24 +368,22 @@ const dispensedCapsuleRef = ref(null)
 
 const isRolling = ref(false)
 const canOpenCapsule = ref(false)
+const isLoggedIn = ref(false)
+const prizeLoading = ref(false)
+const profileLoading = ref(false)
+const inventoryLoading = ref(false)
+const transactionLoading = ref(false)
+const sellingInventoryId = ref(null)
 const dispensedPrize = ref(null)
 const openedPrize = ref(null)
 const showResultDialog = ref(false)
 const showHistoryDialog = ref(false)
 const showTradeDialog = ref(false)
-const history = ref([])
 const ownedPrizes = ref([])
 const tradeRecords = ref([])
 const machineBalls = ref([])
-
-const prizes = [
-	{ id: 1, name: '霓虹猫爪', icon: '🐾', description: '会在夜里发光的电子猫爪，尾灯会像流萤一样闪。', rarity: 'Rare', theme: '霓虹精灵', color: '#ff6fa9', weight: 2 },
-	{ id: 2, name: '海盐水母', icon: '🪼', description: '带着微光海蓝的漂浮水母，晃一晃会洒出冷光粒子。', rarity: 'Epic', theme: '海洋蓝调', color: '#57c7ff', weight: 1 },
-	{ id: 3, name: '黄油吐司', icon: '🍞', description: '软乎乎的一片吐司摆件，看起来像刚从烤箱出来。', rarity: 'Common', theme: '奶油黄昏', color: '#ffbf47', weight: 4 },
-	{ id: 4, name: '流星唱片', icon: '📀', description: '透明唱片里封着一颗流星，转动时会看到银色拖尾。', rarity: 'Rare', theme: '银河漫游', color: '#8d9eff', weight: 2 },
-	{ id: 5, name: '草莓火箭', icon: '🚀', description: '粉色小火箭胶囊玩具，虽然飞不走，但足够可爱。', rarity: 'Super Rare', theme: '莓果航线', color: '#ff7c6b', weight: 1 },
-	{ id: 6, name: '四叶云朵', icon: '☁️', description: '软绵绵的小云朵挂件，像把好运压缩成了一团。', rarity: 'Common', theme: '薄雾花园', color: '#7ad9a7', weight: 4 },
-]
+const prizes = ref([])
+const gachaProfile = ref(createEmptyProfile())
 
 const machineBallRows = [
 	{ size: 48, overlap: 0.35 },
@@ -341,6 +406,12 @@ let introTimeline = null
 let bowlFloatTween = null
 let currentRollTimeline = null
 let shineTween = null
+
+const updateSessionState = () => {
+	const loginStatus = String(localStorage.getItem('loginStatus') || '').trim()
+	const userInfoString = String(localStorage.getItem('userInfo') || '').trim()
+	isLoggedIn.value = Boolean(loginStatus && userInfoString)
+}
 
 const pickRandomBallPalette = (previousIndex = -1) => {
 	if (machineBallPalette.length === 1) {
@@ -425,12 +496,10 @@ const buildMachineBalls = () => {
 	machineBalls.value = nextBalls
 }
 
-const weightedPool = prizes.flatMap((item) => Array.from({ length: item.weight }, () => item))
+const isRefreshingData = computed(() => profileLoading.value || inventoryLoading.value || transactionLoading.value)
 
-const capsuleHint = computed(() => {
-	if (dispensedPrize.value && canOpenCapsule.value) return '点击胶囊打开'
-	if (dispensedPrize.value) return '胶囊滑出中...'
-	return '转动把手开始抽取'
+const prizeMetaMap = computed(() => {
+	return new Map(prizes.value.map((item) => [Number(item.id), item]))
 })
 
 const panelStyle = computed(() => ({
@@ -438,7 +507,7 @@ const panelStyle = computed(() => ({
 }))
 
 const collectionSummary = computed(() => ({
-	total: ownedPrizes.value.length,
+	total: Number(gachaProfile.value.ownedCount || ownedPrizes.value.length || 0),
 	latestName: ownedPrizes.value[0]?.name || '--',
 }))
 
@@ -448,20 +517,68 @@ const tradeSummary = computed(() => ({
 	latestStatus: tradeRecords.value[0]?.status || '--',
 }))
 
+const historyRecords = computed(() =>
+	tradeRecords.value.filter((record) => record.typeCode === 'draw').map((record) => ({
+		historyId: `history-${record.tradeId}`,
+		id: record.prizeId,
+		displayId: record.prizeId,
+		name: record.prizeName,
+		icon: record.icon,
+		description: record.prizeDescription || record.description,
+		rarity: record.rarity,
+		theme: record.theme || '--',
+		color: record.color || '#ffb45f',
+		droppedAt: record.createdAt,
+	})),
+)
+
+const canDraw = computed(() => {
+	if (!isLoggedIn.value || prizeLoading.value || profileLoading.value || isRolling.value) return false
+	if (!prizes.value.length) return false
+	if (Number(gachaProfile.value.drawsRemainingToday || 0) <= 0) return false
+	return Number(gachaProfile.value.points || 0) >= Number(gachaProfile.value.drawCost || 0)
+})
+
+const capsuleHint = computed(() => {
+	if (!isLoggedIn.value) return 'Log in to sync backend data and start drawing'
+	if (dispensedPrize.value && canOpenCapsule.value) return 'Click the capsule to open it'
+	if (dispensedPrize.value) return 'Capsule sliding out...'
+	if (Number(gachaProfile.value.drawsRemainingToday || 0) <= 0) return 'Daily limit reached. Wait for the next reset'
+	if (Number(gachaProfile.value.points || 0) < Number(gachaProfile.value.drawCost || 0)) return 'Not enough points for a draw'
+	return 'Turn the handle to draw'
+})
+
+const formatDateTime = (value, includeDate = false) => {
+	if (!value) return '--'
+
+	return new Intl.DateTimeFormat('zh-CN', {
+		month: includeDate ? '2-digit' : undefined,
+		day: includeDate ? '2-digit' : undefined,
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
+	}).format(new Date(value))
+}
+
+const nextRefreshText = computed(() => formatDateTime(gachaProfile.value.nextRefreshAt, true))
+
 const historyEntryTip = computed(() => {
-	if (!history.value.length && !tradeRecords.value.length) {
-		return '当前展示的是预留数据结构，后续可直接替换成后台接口返回值。'
+	if (!isLoggedIn.value) {
+		return 'This page now uses backend APIs. Log in to view your points, inventory, and trade history.'
 	}
 
-	return `当前已记录 ${history.value.length} 条扭蛋记录，${tradeRecords.value.length} 条交易记录。`
+	return `Synced ${historyRecords.value.length} draw records and ${tradeRecords.value.length} trade records.`
 })
 
 const formatHistoryTime = (value) => {
 	if (!value) return '--:--'
-	const date = new Date(value)
-	const hh = `${date.getHours()}`.padStart(2, '0')
-	const mm = `${date.getMinutes()}`.padStart(2, '0')
-	return `${hh}:${mm}`
+	return new Intl.DateTimeFormat('zh-CN', {
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
+	}).format(new Date(value))
 }
 
 const tweenTo = (target, vars) =>
@@ -475,31 +592,156 @@ const tweenTo = (target, vars) =>
 		})
 	})
 
-const pickPrize = () => weightedPool[Math.floor(Math.random() * weightedPool.length)]
+const resolveResponseData = (response, fallbackMessage) => {
+	ensureApiSuccess(response, fallbackMessage)
+	if (response?.success === false) {
+		throw new Error(response?.error || response?.message || fallbackMessage)
+	}
 
-// 预留数据接入层：后续替换为后台接口时，优先改这几个方法即可。
-const requestRollPrize = async () => pickPrize()
-const setOwnedPrizes = (records = []) => {
-	ownedPrizes.value = records
-}
-const setHistoryRecords = (records = []) => {
-	history.value = records
-}
-const setTradeRecords = (records = []) => {
-	tradeRecords.value = records
+	return response?.data
 }
 
-const createCollectionItem = (prize) => ({
-	...prize,
-	collectionId: `${prize.id}-${Date.now()}`,
-	obtainedAt: Date.now(),
-})
+const mapPrizeItem = (item = {}) => {
+	const meta = prizeMetaMap.value.get(Number(item.prize_id || item.prizeId || item.id)) || {}
+	const displayId = Number(item.prize_id || item.prizeId || item.id || meta.id || 0)
 
-const createHistoryItem = (prize) => ({
-	...prize,
-	historyId: `${prize.id}-${Date.now()}`,
-	droppedAt: Date.now(),
-})
+	return {
+		id: displayId,
+		displayId,
+		inventoryId: Number(item.inventoryId || item.inventory_id || item.id || 0),
+		name: item.prize_name || item.name || meta.name || 'Unknown Prize',
+		icon: item.prize_icon || item.icon || meta.icon || 'prize',
+		description: item.prize_description || item.description || meta.description || 'No description',
+		rarity: item.rarity || meta.rarity || '--',
+		theme: item.theme || meta.theme || '--',
+		color: item.color || meta.color || '#ffb45f',
+		sellPoints: Number(item.sell_points || item.sellPoints || meta.sellPoints || 0),
+		status: item.status || 'owned',
+		obtainedAt: item.obtained_at || item.obtainedAt || '',
+		soldAt: item.sold_at || item.soldAt || '',
+	}
+}
+
+const mapTransactionRecord = (item = {}) => {
+	const typeCode = item.transaction_type || item.type || 'draw'
+	const meta = prizeMetaMap.value.get(Number(item.prize_id || item.prizeId || 0)) || {}
+	const prizeName = item.prize_name || item.prizeName || meta.name || 'Unknown Prize'
+	const isDraw = typeCode === 'draw'
+
+	return {
+		tradeId: Number(item.id || 0),
+		typeCode,
+		type: isDraw ? 'Draw' : 'Sell',
+		status: isDraw ? 'In Inventory' : 'Points Added',
+		title: isDraw ? `Drew ${prizeName}` : `Sold ${prizeName}`,
+		description: item.remark || (isDraw ? 'Draw completed and the prize was added to inventory.' : 'Sell completed and points were added back.'),
+		createdAt: item.created_at || item.createdAt || '',
+		icon: meta.icon || (isDraw ? 'draw' : 'sell'),
+		color: meta.color || (isDraw ? '#ffb45f' : '#8fd3a6'),
+		rarity: item.rarity || meta.rarity || '--',
+		theme: meta.theme || '--',
+		prizeId: Number(item.prize_id || item.prizeId || meta.id || 0),
+		prizeName,
+		prizeDescription: meta.description || '',
+		pointsChange: Number(item.points_change || item.pointsChange || 0),
+		pointsBalance: Number(item.points_balance || item.pointsBalance || 0),
+	}
+}
+
+const resetPrivateData = () => {
+	gachaProfile.value = createEmptyProfile()
+	ownedPrizes.value = []
+	tradeRecords.value = []
+}
+
+const loadPrizeList = async () => {
+	prizeLoading.value = true
+	try {
+		const response = await gachaPrizeListGet()
+		const data = resolveResponseData(response, 'Failed to load prize list')
+		prizes.value = Array.isArray(data) ? data.map((item) => mapPrizeItem(item)) : []
+	} finally {
+		prizeLoading.value = false
+	}
+}
+
+const loadProfile = async () => {
+	if (!isLoggedIn.value) return
+
+	profileLoading.value = true
+	try {
+		const response = await gachaProfileGet()
+		const data = resolveResponseData(response, 'Failed to load gacha profile')
+		gachaProfile.value = {
+			...createEmptyProfile(),
+			...data,
+			points: Number(data?.points || 0),
+			drawCost: Number(data?.drawCost || 0),
+			dailyDrawLimit: Number(data?.dailyDrawLimit || 0),
+			drawsUsedToday: Number(data?.drawsUsedToday || 0),
+			drawsRemainingToday: Number(data?.drawsRemainingToday || 0),
+			ownedCount: Number(data?.ownedCount || 0),
+		}
+	} finally {
+		profileLoading.value = false
+	}
+}
+
+const loadInventory = async () => {
+	if (!isLoggedIn.value) return
+
+	inventoryLoading.value = true
+	try {
+		const response = await gachaInventoryGet({ status: 'owned', currentPage: 1, pageSize: 20 })
+		const data = resolveResponseData(response, 'Failed to load inventory')
+		const list = Array.isArray(data?.list) ? data.list : []
+		ownedPrizes.value = list.map((item) => mapPrizeItem(item))
+	} finally {
+		inventoryLoading.value = false
+	}
+}
+
+const loadTransactions = async () => {
+	if (!isLoggedIn.value) return
+
+	transactionLoading.value = true
+	try {
+		const response = await gachaTransactionsGet({ type: 'all', currentPage: 1, pageSize: 20 })
+		const data = resolveResponseData(response, 'Failed to load transactions')
+		const list = Array.isArray(data?.list) ? data.list : []
+		tradeRecords.value = list.map((item) => mapTransactionRecord(item))
+	} finally {
+		transactionLoading.value = false
+	}
+}
+
+const refreshUserData = async () => {
+	updateSessionState()
+	if (!isLoggedIn.value) {
+		resetPrivateData()
+		return
+	}
+
+	await Promise.allSettled([loadProfile(), loadInventory(), loadTransactions()])
+}
+
+const requestRollPrize = async () => {
+	const response = await gachaDrawReq()
+	const data = resolveResponseData(response, 'Draw failed')
+	const prize = mapPrizeItem(data?.prize)
+
+	gachaProfile.value = {
+		...gachaProfile.value,
+		points: Number(data?.points ?? gachaProfile.value.points),
+		drawCost: Number(data?.drawCost ?? gachaProfile.value.drawCost),
+		drawsUsedToday: Number(data?.drawsUsedToday ?? gachaProfile.value.drawsUsedToday),
+		drawsRemainingToday: Number(data?.drawsRemainingToday ?? gachaProfile.value.drawsRemainingToday),
+		nextRefreshAt: data?.nextRefreshAt || gachaProfile.value.nextRefreshAt,
+		ownedCount: Number(gachaProfile.value.ownedCount || 0) + 1,
+	}
+
+	return prize
+}
 
 const startShineLoop = () => {
 	if (!shineRef.value) return
@@ -535,6 +777,21 @@ const playIntro = () => {
 
 const rollCapsule = async () => {
 	if (isRolling.value) return
+	if (!isLoggedIn.value) {
+		ElMessage.warning('Please log in before drawing')
+		return
+	}
+	if (!canDraw.value) {
+		if (Number(gachaProfile.value.drawsRemainingToday || 0) <= 0) {
+			ElMessage.warning('You have used all draws for today')
+			return
+		}
+		if (Number(gachaProfile.value.points || 0) < Number(gachaProfile.value.drawCost || 0)) {
+			ElMessage.warning('Not enough points for a draw')
+			return
+		}
+		return
+	}
 
 	isRolling.value = true
 	canOpenCapsule.value = false
@@ -544,7 +801,15 @@ const rollCapsule = async () => {
 	currentRollTimeline?.kill()
 	shineTween?.kill()
 
-	const nextPrize = await requestRollPrize()
+	let nextPrize = null
+	try {
+		nextPrize = await requestRollPrize()
+	} catch (error) {
+		isRolling.value = false
+		canOpenCapsule.value = false
+		return
+	}
+
 	await nextTick()
 
 	currentRollTimeline = gsap.timeline({
@@ -584,12 +849,28 @@ const rollCapsule = async () => {
 		.to(handleRef.value, { rotate: 0, duration: 0.46, ease: 'back.out(2.4)' })
 		.to(
 			machineBodyRef.value,
-			{ keyframes: [{ x: -8, rotateZ: -1.5, duration: 0.08 }, { x: 8, rotateZ: 1.5, duration: 0.08 }, { x: -6, rotateZ: -1, duration: 0.08 }, { x: 6, rotateZ: 1, duration: 0.08 }, { x: 0, rotateZ: 0, duration: 0.1 }] },
+			{
+				keyframes: [
+					{ x: -8, rotateZ: -1.5, duration: 0.08 },
+					{ x: 8, rotateZ: 1.5, duration: 0.08 },
+					{ x: -6, rotateZ: -1, duration: 0.08 },
+					{ x: 6, rotateZ: 1, duration: 0.08 },
+					{ x: 0, rotateZ: 0, duration: 0.1 },
+				],
+			},
 			0.12,
 		)
 		.to(
 			'.bowl-ball',
-			{ keyframes: [{ x: 'random(-10, 10)', y: 'random(-12, 8)', duration: 0.08 }, { x: 'random(-12, 12)', y: 'random(-8, 12)', duration: 0.08 }, { x: 'random(-6, 6)', y: 'random(-4, 4)', duration: 0.1 }, { x: 0, y: 0, duration: 0.16 }], stagger: 0.01 },
+			{
+				keyframes: [
+					{ x: 'random(-10, 10)', y: 'random(-12, 8)', duration: 0.08 },
+					{ x: 'random(-12, 12)', y: 'random(-8, 12)', duration: 0.08 },
+					{ x: 'random(-6, 6)', y: 'random(-4, 4)', duration: 0.1 },
+					{ x: 0, y: 0, duration: 0.16 },
+				],
+				stagger: 0.01,
+			},
 			0.1,
 		)
 		.fromTo(trayRef.value, { y: 0 }, { y: 6, duration: 0.12, yoyo: true, repeat: 3 }, 0.52)
@@ -608,23 +889,38 @@ const openCapsule = async () => {
 	dispensedPrize.value = null
 	openedPrize.value = targetPrize
 	showResultDialog.value = true
-	setOwnedPrizes([createCollectionItem(targetPrize), ...ownedPrizes.value].slice(0, 6))
-	setHistoryRecords([createHistoryItem(targetPrize), ...history.value].slice(0, 6))
 
 	await nextTick()
 
 	gsap.fromTo(panelRef.value, { y: 0 }, { keyframes: [{ y: -8, duration: 0.09 }, { y: 5, duration: 0.09 }, { y: -4, duration: 0.08 }, { y: 0, duration: 0.1 }], ease: 'power1.out' })
 	gsap.fromTo('.result-card.active', { scale: 0.78, rotateX: -25, autoAlpha: 0 }, { scale: 1, rotateX: 0, autoAlpha: 1, duration: 0.55, ease: 'back.out(1.7)' })
 	startShineLoop()
+
+	await refreshUserData()
 }
 
-const clearHistory = () => {
-	setHistoryRecords([])
+const sellPrize = async (item) => {
+	if (!item?.inventoryId) return
+
+	sellingInventoryId.value = item.inventoryId
+	try {
+		const response = await gachaInventorySellReq(item.inventoryId)
+		resolveResponseData(response, 'Failed to sell prize')
+		ElMessage.success(`Sold ${item.name} and returned points to your balance`)
+		await refreshUserData()
+	} finally {
+		sellingInventoryId.value = null
+	}
+}
+
+const initializeData = async () => {
+	updateSessionState()
+	await loadPrizeList()
+	await refreshUserData()
 }
 
 onMounted(() => {
 	buildMachineBalls()
-	setTradeRecords([])
 
 	if (typeof ResizeObserver !== 'undefined' && bowlRef.value) {
 		bowlResizeObserver = new ResizeObserver(() => {
@@ -634,6 +930,7 @@ onMounted(() => {
 	}
 
 	playIntro()
+	initializeData()
 })
 
 onBeforeUnmount(() => {
@@ -1350,6 +1647,27 @@ onBeforeUnmount(() => {
 	color: rgba(103, 48, 16, 0.68);
 }
 
+.collection-item-actions {
+	flex: 0 0 auto;
+}
+
+.collection-sell {
+	padding: 8px 12px;
+	border: 0;
+	border-radius: 999px;
+	background: linear-gradient(135deg, #ff9a5f, #ef5d2f);
+	color: #fffaf4;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	box-shadow: 0 10px 20px rgba(206, 95, 44, 0.16);
+}
+
+.collection-sell:disabled {
+	cursor: progress;
+	opacity: 0.7;
+}
+
 .collection-empty {
 	display: grid;
 	place-items: center;
@@ -1360,8 +1678,40 @@ onBeforeUnmount(() => {
 }
 
 .record-panel {
-	justify-content: center;
+	justify-content: flex-start;
 	min-height: 154px;
+}
+
+.profile-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.profile-stat {
+	display: grid;
+	gap: 6px;
+	padding: 14px 12px;
+	border-radius: 20px;
+	background: rgba(255, 255, 255, 0.76);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.profile-stat strong {
+	font-size: 20px;
+	color: #673010;
+}
+
+.profile-refresh {
+	font-size: 13px;
+	line-height: 1.6;
+	color: rgba(103, 48, 16, 0.7);
+}
+
+.panel-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
 }
 
 .text-action-button {
@@ -1378,6 +1728,17 @@ onBeforeUnmount(() => {
 
 .text-action-button:hover {
 	color: #c85c28;
+}
+
+.text-action-button:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+	color: #8b471d;
+}
+
+.action-button-secondary {
+	font-size: 15px;
+	color: #a55320;
 }
 
 .result-card {
@@ -1528,6 +1889,11 @@ onBeforeUnmount(() => {
 	font-size: 13px;
 	color: #a55320;
 	cursor: pointer;
+}
+
+.history-clear:disabled {
+	cursor: progress;
+	opacity: 0.65;
 }
 
 .history-list {
@@ -1698,6 +2064,10 @@ onBeforeUnmount(() => {
 	.collection-card {
 		padding: 16px;
 	}
+
+	.profile-summary {
+		grid-template-columns: 1fr;
+	}
 }
 
 @media (max-width: 640px) {
@@ -1760,6 +2130,16 @@ onBeforeUnmount(() => {
 		font-size: 20px;
 	}
 
+	.collection-item {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.collection-item-actions,
+	.collection-sell {
+		width: 100%;
+	}
+
 	.collection-empty {
 		min-height: 160px;
 	}
@@ -1793,5 +2173,12 @@ onBeforeUnmount(() => {
 		grid-template-columns: 1fr;
 		height: auto;
 	}
+
+	.profile-summary {
+		grid-template-columns: 1fr;
+		height: auto;
+	}
 }
 </style>
+
+

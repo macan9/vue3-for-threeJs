@@ -41,6 +41,7 @@ export const menu_top_config = [
         value: '5',
         path: '/MyResume',
         icon: 'Tickets',
+        moblieHide: true,
     },
     {
         label: '消息模块',

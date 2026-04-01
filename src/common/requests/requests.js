@@ -29,6 +29,7 @@ const normalizeResponse = (res) => {
 const buildErrorMessage = (error) => {
   return String(
     error?.response?.data?.message ||
+    error?.response?.data?.error ||
     error?.message ||
     DEFAULT_ERROR_MESSAGE
   )
