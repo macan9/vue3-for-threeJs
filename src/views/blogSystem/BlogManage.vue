@@ -76,12 +76,11 @@
 
 		<BlogEditorDialog
 			v-model:visible="editorVisible"
-			:title="editorMode === 'create' ? '新增博客' : '编辑博客'"
+			title="编辑博客"
 			:form="editorForm"
 			:rules="editorRules"
 			:submitting="submitting"
 			@submit="handleEditorSubmit"
-			@preview="openPreview"
 		/>
 
 		<BlogPreviewDialog
@@ -98,19 +97,20 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { postCreateReq, postDelete, postInfoPut, postListGet } from '@/apis/blogApis.js'
+import { postDelete, postInfoPut, postListGet } from '@/apis/blogApis.js'
 import { ensureApiSuccess, isApiSuccess } from '@/common/requests/requests.js'
 import BlogEditorDialog from '@/views/blogSystem/components/BlogEditorDialog.vue'
 import BlogPreviewDialog from '@/views/blogSystem/components/BlogPreviewDialog.vue'
 import { formatDateTime, getContent, getRowId } from '@/views/blogSystem/blogHelpers.js'
 
+const router = useRouter()
 const search = ref('')
 const loading = ref(false)
 const tableData = ref([])
 
 const editorVisible = ref(false)
-const editorMode = ref('create')
 const editingId = ref('')
 const submitting = ref(false)
 const editorForm = reactive({
@@ -162,15 +162,6 @@ const getCurrentUser = () => {
 	}
 }
 
-const resetEditorForm = () => {
-	editorForm.title = ''
-	editorForm.summary = ''
-	editorForm.content = ''
-	editorForm.cover_image = ''
-	editorForm.tags = ''
-	editorForm.is_top = false
-}
-
 const fillEditorForm = (row = {}) => {
 	editorForm.title = row?.title || ''
 	editorForm.summary = row?.summary || row?.desc || row?.description || ''
@@ -206,10 +197,7 @@ const getPostData = async () => {
 }
 
 const openCreate = () => {
-	editorMode.value = 'create'
-	editingId.value = ''
-	resetEditorForm()
-	editorVisible.value = true
+	router.push('/blogAdd')
 }
 
 const openEdit = (row) => {
@@ -219,7 +207,6 @@ const openEdit = (row) => {
 		return
 	}
 
-	editorMode.value = 'edit'
 	editingId.value = id
 	fillEditorForm(row)
 	editorVisible.value = true
@@ -238,21 +225,6 @@ const openPreview = (payload = {}) => {
 const handleEditorSubmit = async (formData) => {
 	if (submitting.value) return
 	submitting.value = true
-
-	if (editorMode.value === 'create') {
-		const response = await postCreateReq({ ...formData })
-		if (!isApiSuccess(response)) {
-			ElMessage.error(String(response?.message || '新增失败'))
-			submitting.value = false
-			return
-		}
-
-		ElMessage.success('新增成功')
-		editorVisible.value = false
-		submitting.value = false
-		await getPostData()
-		return
-	}
 
 	if (!editingId.value) {
 		ElMessage.warning('未找到文章id')

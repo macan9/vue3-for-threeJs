@@ -16,6 +16,12 @@ export const menu_left_config = [
                 moblieHide: true,
             },
             {
+                label: '发表博客',
+                value: '1-8',
+                path: '/blogAdd',
+                icon: 'EditPen',
+            },
+            {
                 label: '用户管理',
                 value: '1-2',
                 path: '/userTable',
