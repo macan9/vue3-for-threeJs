@@ -5,6 +5,9 @@
     width="560px"
     class="user-register-style"
     align-center
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :before-close="handleBeforeClose"
   >
     <div class="register-head">
       <div class="register-badge">Create Account</div>
@@ -82,7 +85,7 @@
 
 <script lang="js" setup>
 import { defineProps, defineEmits, toRef, ref, reactive, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { registerReq, getCaptcha } from '@/apis/userApis.js'
 import { isApiSuccess } from '@/common/requests/requests.js'
 import { encryptPasswordFields, validatePassword, validateUsername } from '@/common/utils/authSecurity.js'
@@ -122,6 +125,20 @@ const resetForm = () => {
   userForm.description = ''
   userForm.captcha = ''
   userForm.captchaId = ''
+  userRuleFormRef.value?.clearValidate()
+}
+
+const hasFormInput = () => {
+  return Object.entries(userForm).some(([key, value]) => {
+    if (key === 'captchaId') return false
+    return String(value || '').trim() !== ''
+  })
+}
+
+const doCloseDialog = () => {
+  visible.value.attr = false
+  resetForm()
+  captchaImg.value = ''
 }
 
 const loadCaptcha = async () => {
@@ -164,10 +181,29 @@ const userRules = reactive({
   captcha: [{ required: true, message: '请输入图形验证码', trigger: 'blur' }],
 })
 
+const handleBeforeClose = (done) => {
+  if (!hasFormInput()) {
+    done()
+    return
+  }
+
+  ElMessageBox.confirm('表单内容尚未提交，关闭后已填写内容将丢失，确定要关闭吗？', '关闭确认', {
+    confirmButtonText: '确认关闭',
+    cancelButtonText: '继续填写',
+    type: 'warning',
+  })
+    .then(() => {
+      done()
+    })
+    .catch(() => {
+      // canceled
+    })
+}
+
 const closeDialog = () => {
-  visible.value.attr = false
-  resetForm()
-  captchaImg.value = ''
+  handleBeforeClose(() => {
+    doCloseDialog()
+  })
 }
 
 const registerUser = async (formEl) => {
@@ -190,7 +226,7 @@ const registerUser = async (formEl) => {
       type: 'success',
     })
     emit('update-user-data')
-    closeDialog()
+    doCloseDialog()
   })
 }
 

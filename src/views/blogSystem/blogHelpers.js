@@ -99,6 +99,54 @@ export const getContent = (row) => {
 	return pickField(row, contentFieldList)
 }
 
+export const normalizeBlogTags = (value) => {
+	if (Array.isArray(value)) {
+		return value.filter(Boolean)
+	}
+	if (typeof value === 'string') {
+		return value
+			.split(',')
+			.map((item) => item.trim())
+			.filter(Boolean)
+	}
+	return []
+}
+
+export const fileToBase64 = (file) => {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader()
+		reader.onload = () => {
+			const result = String(reader.result || '')
+			resolve(result.split(',').pop() || '')
+		}
+		reader.onerror = reject
+		reader.readAsDataURL(file)
+	})
+}
+
+export const resolveGiteeUploadedUrl = (response, fallback = '') => {
+	return response?.content?.download_url
+		|| response?.download_url
+		|| response?.data?.content?.download_url
+		|| response?.data?.download_url
+		|| response?.content?.html_url
+		|| response?.html_url
+		|| response?.data?.content?.html_url
+		|| response?.data?.html_url
+		|| fallback
+}
+
+export const buildBlogSubmitPayload = (form = {}) => {
+	return {
+		title: String(form?.title || '').trim(),
+		summary: String(form?.summary || '').trim(),
+		content: String(form?.content || ''),
+		cover_image: String(form?.cover_image || '').trim(),
+		tags: normalizeBlogTags(form?.tags).join(','),
+		is_top: Boolean(form?.is_top),
+	}
+}
+
 export const formatDate = (val) => {
 	if (!val) return ''
 	const date = new Date(val)

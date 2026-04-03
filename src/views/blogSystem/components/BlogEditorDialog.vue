@@ -69,20 +69,10 @@
 			<el-form-item label="摘要" prop="summary">
 				<el-input v-model="localForm.summary" placeholder="可选" />
 			</el-form-item>
-
-			<el-form-item label="内容" prop="content">
-				<el-input
-					v-model="localForm.content"
-					type="textarea"
-					:rows="12"
-					placeholder="请输入内容（支持 Markdown）"
-				/>
-			</el-form-item>
 		</el-form>
 
 		<template #footer>
 			<div class="dialog-footer">
-				<el-button @click="handlePreview">预览</el-button>
 				<el-button @click="handleClose">取消</el-button>
 				<el-button type="primary" :loading="submitting" @click="handleSubmit">保存</el-button>
 			</div>
@@ -95,6 +85,12 @@
 import { reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { uploadGiteeFile } from '@/apis/giteeApis'
+import {
+	normalizeBlogTags,
+	fileToBase64,
+	resolveGiteeUploadedUrl,
+	buildBlogSubmitPayload,
+} from '@/views/blogSystem/blogHelpers.js'
 import { blog_tag_options } from '/public/config/blog_tags'
 
 const props = defineProps({
@@ -104,7 +100,7 @@ const props = defineProps({
 	},
 	title: {
 		type: String,
-		default: '博客编辑',
+		default: '博客设置',
 	},
 	form: {
 		type: Object,
@@ -127,7 +123,7 @@ const props = defineProps({
 	},
 })
 
-const emit = defineEmits(['update:visible', 'submit', 'preview'])
+const emit = defineEmits(['update:visible', 'submit'])
 
 const formRef = ref()
 const uploadingCover = ref(false)
@@ -142,25 +138,12 @@ const localForm = reactive({
 	is_top: false,
 })
 
-const normalizeTags = (value) => {
-	if (Array.isArray(value)) {
-		return value.filter(Boolean)
-	}
-	if (typeof value === 'string') {
-		return value
-			.split(',')
-			.map((item) => item.trim())
-			.filter(Boolean)
-	}
-	return []
-}
-
 const syncForm = (value = {}) => {
 	localForm.title = value?.title || ''
 	localForm.summary = value?.summary || ''
 	localForm.content = value?.content || ''
 	localForm.cover_image = value?.cover_image || value?.cover || value?.coverUrl || ''
-	localForm.tags = normalizeTags(value?.tags)
+	localForm.tags = normalizeBlogTags(value?.tags)
 	localForm.is_top = Boolean(value?.is_top)
 }
 
@@ -188,17 +171,6 @@ const handleClose = () => {
 	emit('update:visible', false)
 }
 
-const buildSubmitPayload = () => {
-	return {
-		...localForm,
-		tags: localForm.tags.join(','),
-	}
-}
-
-const handlePreview = () => {
-	emit('preview', buildSubmitPayload())
-}
-
 const beforeCoverUpload = (file) => {
 	const isImage = String(file.type || '').startsWith('image/')
 	if (!isImage) {
@@ -215,37 +187,13 @@ const beforeCoverUpload = (file) => {
 	return true
 }
 
-const fileToBase64 = (file) => {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader()
-		reader.onload = () => {
-			const result = String(reader.result || '')
-			resolve(result.split(',').pop() || '')
-		}
-		reader.onerror = reject
-		reader.readAsDataURL(file)
-	})
-}
-
-const resolveUploadedUrl = (response, fallbackName) => {
-	return response?.content?.download_url
-		|| response?.download_url
-		|| response?.data?.content?.download_url
-		|| response?.data?.download_url
-		|| response?.content?.html_url
-		|| response?.html_url
-		|| response?.data?.content?.html_url
-		|| response?.data?.html_url
-		|| fallbackName
-	}
-
 const handleCoverUpload = async ({ file }) => {
 	uploadingCover.value = true
 	try {
 		const fileName = `${Date.now()}-${String(file.name || 'cover').replace(/\s+/g, '-')}`
 		const base64Content = await fileToBase64(file)
 		const response = await uploadGiteeFile(base64Content, fileName, 'blogCover')
-		const coverUrl = resolveUploadedUrl(response, '')
+		const coverUrl = resolveGiteeUploadedUrl(response, '')
 
 		if (!coverUrl) {
 			throw new Error('未获取到封面地址')
@@ -268,7 +216,8 @@ const clearCover = () => {
 const handleSubmit = async () => {
 	const ok = await formRef.value?.validate?.().catch(() => false)
 	if (!ok) return
-	emit('submit', buildSubmitPayload())
+	const payload = buildBlogSubmitPayload(localForm)
+	emit('submit', payload)
 }
 </script>
 
@@ -313,10 +262,10 @@ const handleSubmit = async () => {
 	}
 }
 
-	.cover-actions {
-		flex: 1;
-		min-width: 0;
-	}
+.cover-actions {
+	flex: 1;
+	min-width: 0;
+}
 
 .cover-buttons {
 	display: flex;
