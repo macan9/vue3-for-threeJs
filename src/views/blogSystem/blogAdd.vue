@@ -7,15 +7,14 @@
 		<div class="blog-add-main">
 			<div class="editor-toolbar">
 				<div class="toolbar-left">
-					<el-button @click="goBack">返回</el-button>
+					<el-button v-if="showBackButton" @click="goBack">返回</el-button>
 					<el-input v-model="form.title" class="title-input" placeholder="请输入博客标题" />
 				</div>
 
 				<div class="toolbar-right">
 					<el-radio-group v-model="editorMode" size="default">
-						<el-radio-button label="source">源码</el-radio-button>
-						<el-radio-button label="split">预览</el-radio-button>
-						<el-radio-button label="preview">仅预览</el-radio-button>
+						<el-radio-button label="source">源码编辑</el-radio-button>
+						<el-radio-button label="wysiwyg">正常编辑</el-radio-button>
 					</el-radio-group>
 					<el-button circle @click="settingsVisible = true">
 						<el-icon><Setting /></el-icon>
@@ -30,8 +29,8 @@
 				<span v-if="uploadingPasteImage" class="upload-status">图片上传中...</span>
 			</div>
 
-			<div class="editor-shell" :class="`mode-${editorMode}`">
-				<div v-if="editorMode !== 'preview'" class="editor-pane">
+			<div class="editor-shell">
+				<div v-show="editorMode === 'source'" class="editor-pane">
 					<textarea
 						ref="editorRef"
 						v-model="form.content"
@@ -41,27 +40,8 @@
 					></textarea>
 				</div>
 
-				<div v-if="editorMode !== 'source'" class="preview-pane">
-					<div class="preview-shell">
-						<div v-if="form.cover_image" class="preview-cover">
-							<img :src="form.cover_image" alt="博客封面预览">
-						</div>
-
-						<div class="preview-head">
-							<div class="preview-title-row">
-								<h2 class="preview-title">{{ form.title || '未命名博客' }}</h2>
-								<el-tag v-if="form.is_top" type="danger" size="small">置顶</el-tag>
-							</div>
-							<div v-if="currentTags.length" class="preview-tags">
-								<el-tag v-for="item in currentTags" :key="item" size="small" effect="plain">
-									{{ item }}
-								</el-tag>
-							</div>
-							<div v-if="form.summary" class="preview-summary">{{ form.summary }}</div>
-						</div>
-
-						<div class="preview-content markdown-body" v-html="previewHtml"></div>
-					</div>
+				<div v-show="editorMode === 'wysiwyg'" class="editor-pane visual-editor-pane">
+					<div ref="vditorRef" class="vditor-shell"></div>
 				</div>
 			</div>
 		</div>
@@ -78,10 +58,11 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Setting } from '@element-plus/icons-vue'
+import Vditor from 'vditor'
 import { postCreateReq } from '@/apis/blogApis.js'
 import { uploadGiteeFile } from '@/apis/giteeApis.js'
 import { isApiSuccess } from '@/common/requests/requests.js'
@@ -92,16 +73,21 @@ import {
 	normalizeBlogTags,
 	resolveGiteeUploadedUrl,
 } from '@/views/blogSystem/blogHelpers.js'
-import { renderMarkdown } from '@/utils/markdown.js'
+import { normalizeMarkdownContent } from '@/utils/markdown.js'
 import 'highlight.js/styles/atom-one-light.css'
+import 'vditor/dist/index.css'
 
 const router = useRouter()
+const route = useRoute()
 const editorRef = ref(null)
-const editorMode = ref('split')
+const vditorRef = ref(null)
+const vditorInstance = ref(null)
+const editorMode = ref('wysiwyg')
 const settingsVisible = ref(false)
 const settingsSubmitting = ref(false)
 const submitting = ref(false)
 const uploadingPasteImage = ref(false)
+const syncingFromVditor = ref(false)
 
 const form = reactive({
 	title: '',
@@ -116,16 +102,16 @@ const settingsRules = {
 	title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
 }
 
+const showBackButton = computed(() => route.query?.from === 'blogManage')
 const currentTags = computed(() => normalizeBlogTags(form.tags))
-const previewHtml = computed(() => {
-	if (!form.content) {
-		return '<p>暂无正文内容。</p>'
-	}
-	return renderMarkdown(form.content)
-})
 
 const goBack = () => {
-	router.back()
+	if (window.history.length > 1) {
+		router.back()
+		return
+	}
+
+	router.push('/blogManage')
 }
 
 const handleSettingsSubmit = (payload) => {
@@ -135,6 +121,113 @@ const handleSettingsSubmit = (payload) => {
 	form.tags = normalizeBlogTags(payload.tags)
 	form.is_top = payload.is_top
 	settingsVisible.value = false
+}
+
+const syncContentFromVditor = () => {
+	if (!vditorInstance.value) return
+
+	syncingFromVditor.value = true
+	form.content = vditorInstance.value.getValue()
+	nextTick(() => {
+		syncingFromVditor.value = false
+	})
+}
+
+const uploadEditorImage = async (file) => {
+	const isLt10M = file.size / 1024 / 1024 < 10
+	if (!isLt10M) {
+		ElMessage.warning('图片大小不能超过 10MB')
+		throw new Error('图片大小不能超过 10MB')
+	}
+
+	const ext = file.type.split('/')[1] || 'png'
+	const fileName = `paste-${Date.now()}.${ext}`
+	const base64Content = await fileToBase64(file)
+	const response = await uploadGiteeFile(base64Content, fileName, 'blogImg')
+	const imageUrl = resolveGiteeUploadedUrl(response, '')
+
+	if (!imageUrl) {
+		throw new Error('未获取到图片地址')
+	}
+
+	return imageUrl
+}
+
+const initVditor = async () => {
+	if (vditorInstance.value || !vditorRef.value) return
+
+	vditorInstance.value = new Vditor(vditorRef.value, {
+		height: '100%',
+		mode: 'wysiwyg',
+		lang: 'zh_CN',
+		cache: {
+			enable: false,
+		},
+		counter: {
+			enable: true,
+			type: 'markdown',
+		},
+		outline: {
+			enable: true,
+			position: 'left',
+		},
+		toolbarConfig: {
+			pin: true,
+		},
+		toolbar: [
+			'emoji',
+			'headings',
+			'bold',
+			'italic',
+			'strike',
+			'link',
+			'|',
+			'list',
+			'ordered-list',
+			'check',
+			'quote',
+			'line',
+			'code',
+			'inline-code',
+			'table',
+			'upload',
+			'|',
+			'undo',
+			'redo',
+			'outline',
+		],
+		upload: {
+			accept: 'image/*',
+			max: 10 * 1024 * 1024,
+			multiple: false,
+			handler: async (files) => {
+				const rawFile = files?.[0]
+				if (!rawFile) return
+
+				uploadingPasteImage.value = true
+				try {
+					const imageUrl = await uploadEditorImage(rawFile)
+					vditorInstance.value?.insertValue(`![image](${imageUrl})`)
+					syncContentFromVditor()
+					ElMessage.success('图片上传成功')
+				} catch (error) {
+					console.error('可视化编辑器图片上传失败', error)
+					ElMessage.error(String(error?.message || '图片上传失败'))
+				} finally {
+					uploadingPasteImage.value = false
+				}
+			},
+		},
+		after: () => {
+			vditorInstance.value?.setValue(normalizeMarkdownContent(form.content || ''))
+		},
+		input: () => {
+			syncContentFromVditor()
+		},
+		blur: () => {
+			syncContentFromVditor()
+		},
+	})
 }
 
 const insertTextAtCursor = async (text) => {
@@ -171,16 +264,7 @@ const handleEditorPaste = async (event) => {
 
 	uploadingPasteImage.value = true
 	try {
-		const ext = file.type.split('/')[1] || 'png'
-		const fileName = `paste-${Date.now()}.${ext}`
-		const base64Content = await fileToBase64(file)
-		const response = await uploadGiteeFile(base64Content, fileName, 'blogImg')
-		const imageUrl = resolveGiteeUploadedUrl(response, '')
-
-		if (!imageUrl) {
-			throw new Error('未获取到图片地址')
-		}
-
+		const imageUrl = await uploadEditorImage(file)
 		const markdownImage = `\n![image](${imageUrl})\n`
 		await insertTextAtCursor(markdownImage)
 		ElMessage.success('图片上传成功')
@@ -223,6 +307,43 @@ const handleSubmit = async () => {
 		submitting.value = false
 	}
 }
+
+watch(
+	() => editorMode.value,
+	async (mode) => {
+		if (mode !== 'wysiwyg') {
+			syncContentFromVditor()
+			return
+		}
+
+		await nextTick()
+		await initVditor()
+		vditorInstance.value?.setValue(normalizeMarkdownContent(form.content || ''))
+	}
+)
+
+watch(
+	() => form.content,
+	(value) => {
+		if (editorMode.value !== 'wysiwyg' || !vditorInstance.value || syncingFromVditor.value) return
+
+		const nextValue = normalizeMarkdownContent(value || '')
+		if (nextValue === vditorInstance.value.getValue()) return
+		vditorInstance.value.setValue(nextValue)
+	}
+)
+
+onMounted(async () => {
+	if (editorMode.value !== 'wysiwyg') return
+
+	await nextTick()
+	await initVditor()
+})
+
+onBeforeUnmount(() => {
+	vditorInstance.value?.destroy()
+	vditorInstance.value = null
+})
 </script>
 
 <style lang="scss">
@@ -278,21 +399,11 @@ const handleSubmit = async () => {
 	.editor-shell {
 		flex: 1;
 		min-height: 0;
-		display: grid;
-		gap: 14px;
+		display: flex;
 	}
 
-	.editor-shell.mode-source,
-	.editor-shell.mode-preview {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	.editor-shell.mode-split {
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-	}
-
-	.editor-pane,
-	.preview-pane {
+	.editor-pane {
+		flex: 1;
 		min-height: 0;
 		border-radius: 22px;
 		border: 1px solid rgba(221, 230, 239, 0.95);
@@ -315,172 +426,51 @@ const handleSubmit = async () => {
 		font-family: Consolas, Monaco, 'Courier New', monospace;
 	}
 
-	.preview-shell {
+	.visual-editor-pane {
+		padding: 0;
+	}
+
+	.vditor-shell {
 		height: 100%;
-		overflow: auto;
-		padding: 24px;
 	}
 
-	.preview-cover {
-		margin-bottom: 22px;
-		height: 220px;
-		border-radius: 18px;
-		overflow: hidden;
-		background: #eef3f8;
-	}
-
-	.preview-cover img {
-		width: 100%;
+	:deep(.vditor) {
 		height: 100%;
-		display: block;
-		object-fit: cover;
+		border: 0;
+		border-radius: 22px;
 	}
 
-	.preview-head {
-		padding-bottom: 16px;
-		border-bottom: 1px solid rgba(213, 225, 235, 0.95);
+	:deep(.vditor-toolbar) {
+		border-bottom: 1px solid rgba(221, 230, 239, 0.95);
+		background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(244, 248, 253, 0.95));
 	}
 
-	.preview-title-row {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		flex-wrap: wrap;
+	:deep(.vditor-content) {
+		height: calc(100% - 52px);
 	}
 
-	.preview-title {
-		margin: 0;
-		font-size: 30px;
-		line-height: 1.2;
-		font-weight: 800;
-		color: #213346;
-		word-break: break-word;
-	}
-
-	.preview-tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		margin-top: 14px;
-	}
-
-	.preview-summary {
-		margin-top: 16px;
-		padding: 14px 16px;
-		border-radius: 16px;
-		background: rgba(242, 247, 252, 0.95);
-		color: #5d7083;
-		font-size: 14px;
-		line-height: 1.8;
-	}
-
-	.preview-content {
-		margin-top: 24px;
-		color: #33475b;
-		font-size: 16px;
+	:deep(.vditor-wysiwyg) {
+		padding: 24px 28px;
+		font-size: 15px;
 		line-height: 1.9;
+		color: #24384c;
 	}
 
-	.preview-shell::-webkit-scrollbar {
-		width: 6px;
+	:deep(.vditor-outline) {
+		border-right: 1px solid rgba(221, 230, 239, 0.95);
+		background: rgba(248, 251, 255, 0.78);
 	}
 
-	.preview-shell::-webkit-scrollbar-thumb {
-		border-radius: 999px;
-		background: rgba(126, 146, 166, 0.5);
+	:deep(.vditor-outline__title) {
+		font-weight: 700;
+		color: #27425d;
 	}
 
-	.preview-shell {
-		scrollbar-width: thin;
-		scrollbar-color: rgba(126, 146, 166, 0.55) transparent;
-	}
-
-	.markdown-body h1,
-	.markdown-body h2,
-	.markdown-body h3,
-	.markdown-body h4,
-	.markdown-body h5,
-	.markdown-body h6 {
-		margin: 1.6em 0 0.7em;
-		line-height: 1.35;
-		color: #1f3144;
-	}
-
-	.markdown-body p,
-	.markdown-body ul,
-	.markdown-body ol,
-	.markdown-body blockquote {
-		margin: 1em 0;
-	}
-
-	.markdown-body a {
-		color: #2f7ddc;
-		text-decoration: none;
-	}
-
-	.markdown-body a:hover {
-		text-decoration: underline;
-	}
-
-	.markdown-body img {
-		max-width: 100%;
-		border-radius: 16px;
-	}
-
-	.markdown-body pre {
-		margin: 1.4em 0;
-		padding: 18px 20px;
-		border-radius: 18px;
-		overflow: auto;
-		background: #f6f8fb;
-		border: 1px solid rgba(219, 229, 238, 0.95);
-	}
-
-	.markdown-body code {
-		font-family: Consolas, Monaco, monospace;
-		font-size: 0.92em;
-	}
-
-	.markdown-body :not(pre) > code {
-		padding: 0.18em 0.45em;
-		border-radius: 8px;
-		background: rgba(228, 236, 245, 0.95);
-		color: #28435f;
-	}
-
-	.markdown-body blockquote {
-		padding: 8px 0 8px 16px;
-		border-left: 4px solid #9bc3ef;
-		color: #607387;
-		background: rgba(245, 249, 253, 0.9);
-		border-radius: 0 12px 12px 0;
-	}
-
-	.markdown-body table {
-		width: 100%;
-		border-collapse: collapse;
-		margin: 1.4em 0;
-		overflow: hidden;
-		border-radius: 14px;
-	}
-
-	.markdown-body th,
-	.markdown-body td {
-		padding: 12px 14px;
-		border: 1px solid rgba(219, 229, 238, 0.95);
-		text-align: left;
-	}
-
-	.markdown-body th {
-		background: #f6f9fc;
-		color: #23384d;
+	:deep(.vditor-outline__content) {
+		font-size: 13px;
 	}
 
 	@media (max-width: 980px) {
-		.editor-shell.mode-split {
-			grid-template-columns: minmax(0, 1fr);
-		}
-
 		.title-input {
 			width: 100%;
 		}
@@ -492,6 +482,10 @@ const handleSubmit = async () => {
 
 		.toolbar-right {
 			justify-content: flex-end;
+		}
+
+		:deep(.vditor-outline) {
+			display: none;
 		}
 	}
 }

@@ -197,7 +197,12 @@ const getPostData = async () => {
 }
 
 const openCreate = () => {
-	router.push('/blogAdd')
+	router.push({
+		path: '/blogAdd',
+		query: {
+			from: 'blogManage',
+		},
+	})
 }
 
 const openEdit = (row) => {
