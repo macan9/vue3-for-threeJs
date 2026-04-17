@@ -1,110 +1,329 @@
 # front-platform-vue3
 
-### Compiles and hot-reloads for development
+一个基于 Vue 3 + Vue CLI + webpack 的综合型前端平台项目。  
+从当前代码结构来看，这个仓库不是单一后台管理页，而是一个融合了内容管理、个人展示、互动功能和趣味实验的前端作品平台。
+
+## 项目定位
+
+项目整体可以理解为一个“个人前端平台”：
+
+- 既包含博客发布、博客展示、用户管理、登录注册这类偏业务型页面
+- 也包含聊天室、图片图床、地图展示这类功能型模块
+- 还包含 Three.js 场景、小游戏、抽奖机、烟花、星海等偏作品展示和交互实验的页面
+
+从路由与菜单结构上看，项目当前主要分为以下几类能力：
+
+- 我的主页/博客系统
+- 趣味功能
+- 三维场景
+- 简历展示
+- 消息模块
+
+## 技术栈
+
+当前项目实际使用的核心技术如下：
+
+- `Vue 3`
+- `Vue Router 4`
+- `Vuex 4`
+- `Element Plus`
+- `Axios`
+- `SCSS`
+- `Vue CLI 5`
+- `webpack 5`
+
+扩展能力相关依赖：
+
+- `three`、`dat.gui`、`gsap`、`stats.js`：三维场景与动画
+- `leaflet`：二维地图
+- `marked`、`marked-highlight`、`highlight.js`、`vditor`：Markdown 编辑与渲染
+- `mockjs`：本地 mock
+- `mammoth`：Word 简历解析/展示相关
+
+## 目录概览
+
+```text
+src/
+  apis/                  接口封装
+  common/                通用配置、mock、请求封装、权限与工具
+  components/            复用组件
+  router/                路由配置与登录守卫
+  services/              WebSocket 服务
+  store/                 Vuex 状态
+  views/                 各业务页面与互动场景
+public/
+  config/                运行时全局配置
+  img/                   静态图片资源
+  models/                Three.js 模型与 HDR 资源
+  textures/              星球材质等资源
 ```
+
+## 主要功能模块
+
+### 1. 登录与用户体系
+
+相关页面与能力：
+
+- 登录页：`/login`
+- 注册弹窗：集成在登录页中
+- 用户信息编辑：`/userEdit`
+- 用户列表：`/userTable`
+- 用户日志：`/userLog`
+
+当前实现特点：
+
+- 登录页包含验证码获取与刷新
+- 登录前会对密码字段做前端加密处理
+- 登录成功后把 `loginStatus` 和 `userInfo` 存入 `localStorage`
+- 路由层做了白名单守卫，未登录默认跳转登录页
+- 菜单层做了角色可见性控制，`admin` 可见用户管理、日志、图床等入口
+
+## 2. 博客系统
+
+相关页面：
+
+- 博客首页：`/BlogMain`
+- 博客管理：`/blogManage`
+- 发布博客：`/blogAdd`
+- 博客详情：`/blogDisplay/:id`
+- Markdown 编辑/渲染实验页：`/markEditor`、`/markJsRender`
+
+当前实现能力：
+
+- 获取文章列表并展示封面、摘要、更新时间、标签
+- 首页支持按标签聚合和过滤
+- 支持文章置顶标识
+- 管理页支持新增、编辑、删除、预览
+- 非管理员会按当前用户过滤自己的文章
+- 博客展示链路已具备内容发布 + 内容消费的完整闭环
+
+结合代码来看，这一块是项目里相对完整、偏“业务系统化”的模块。
+
+## 3. 消息模块 / 聊天室
+
+相关页面：
+
+- 聊天室：`/chatRoom`
+
+当前实现能力：
+
+- 联系人会话列表
+- 未读消息数量展示
+- 会话消息拉取与刷新
+- WebSocket 实时收发消息
+- 发送中的乐观更新
+- 送达回执、已读状态处理
+- 移动端侧边栏抽屉与滑动手势支持
+
+这部分代码量比较大，说明它不是一个简单静态演示，而是已经按“即时通讯”思路做了较完整的前端会话状态管理。
+
+## 4. 图床管理
+
+相关页面：
+
+- 图床管理：`/imgUpload`
+
+当前实现能力：
+
+- 读取目录内容
+- 进入/返回目录
+- 图片预览
+- 复制文件 URL
+- 文件下载
+- 图片上传
+- 文件或目录删除
+
+实现方式上，这部分是通过 Gitee 仓库内容接口来做文件管理，属于“用代码仓库充当轻量图床”的思路。
+
+注意：当前运行时配置里存在 Gitee 访问配置，后续更建议把敏感信息迁移到服务端或私有环境变量，不建议继续在前端公开存放。
+
+## 5. 地图模块
+
+相关页面：
+
+- Leaflet 地图：`/leafletMap`
+
+当前实现能力：
+
+- 初始化二维地图底图
+- 加载自定义 marker
+- 绑定 popup
+- 绘制圆形、面等覆盖物
+- 处理地图点击事件
+
+这部分更偏地图 API 使用示例和交互展示。
+
+## 6. Three.js 场景与 3D 交互
+
+相关页面：
+
+- 基础三维场景：`/threeGuiBase`
+- 三维小岛：`/ThreeIsland`
+- 行星演示：`/threePlanet`
+- 躲避尖刺小游戏：`/DontHitTheSpike`
+
+当前实现能力：
+
+- Three.js 场景加载与渲染
+- 模型、HDR、贴图资源使用
+- 参数面板与运行时调试
+- 独立小游戏运行时封装
+- 全屏模式与菜单隐藏联动
+- 排行榜与成绩记录
+
+其中 `DontHitTheSpike` 已经不是普通 Demo，而是带主题切换、分数保存、排行榜弹窗、移动端触控操作的一套较完整小游戏页面。
+
+## 7. 趣味功能 / 互动实验
+
+相关页面：
+
+- 星海：`/starSea`
+- 烟花：`/fireworks`
+- 扭蛋机：`/gashapon`
+- 幸运转盘：`/luckyWheel`
+- 涂鸦跳跃：`/graffitiJump`
+
+从实现上看，这一组页面承担了“互动体验”和“作品展示”的角色。
+
+尤其是扭蛋机模块已经包含：
+
+- 奖池展示
+- 抽取动画
+- 用户积分
+- 每日次数限制
+- 奖品库存
+- 抽奖记录
+- 交易记录
+- 奖品出售
+
+说明这部分不是纯静态动画，而是接了后端业务接口的互动功能。
+
+## 8. 简历展示
+
+相关页面：
+
+- 在线简历：`/MyResume`
+
+相关资源：
+
+- `public/resume/简历（马灿）4.0.docx`
+
+从仓库内容看，这一部分用于个人简历在线展示，和整个平台“个人门户 + 作品集”的定位是统一的。
+
+## 路由与权限
+
+路由采用 `createWebHashHistory`，当前是 Hash 模式。
+
+公开访问页面包括：
+
+- `/login`
+- `/MyResume`
+- `/BlogMain`
+- `/blogDisplay/:id`
+- `/DontHitTheSpike`
+- `/gashapon`
+- `/luckyWheel`
+- `/graffitiJump`
+
+其余页面默认需要登录。
+
+权限控制目前主要体现在前端菜单显示层，管理员角色可见：
+
+- 用户管理
+- 用户日志
+- 图床管理
+
+## 状态管理与全局配置
+
+Vuex 当前主要维护：
+
+- `loginStatus`
+- `userInfo`
+- `isMobile`
+- `deviceType`
+
+运行时配置位于：
+
+- `public/config/globals_config.js`
+
+当前配置职责包括：
+
+- API 服务地址
+- WebSocket 服务地址
+- 本地/线上服务模式切换
+- 文件资源访问主机
+- Gitee 图床配置
+
+请求层封装位于：
+
+- `src/common/requests/axiosInstance.js`
+- `src/common/requests/requests.js`
+
+实现了：
+
+- 统一 `baseURL`
+- JWT 请求头注入
+- 统一错误提示
+- `401` 后自动退出登录
+
+## 本地开发
+
+安装依赖：
+
+```bash
+npm install
+```
+
+启动开发环境：
+
+```bash
 npm run serve
 ```
-## 配置项记录
-### 默认运行端口
-``` js
-module.exports = {
-  devServer: {
-    port: 8010,
-  },
-}
-```
-### 配置公共路径
-``` js
-  configureWebpack: {
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, 'src')
-      }
-    }
-  },
-  publicPath: './',
-```
-### 安装好node-sass，sass-loader， 配置vue文件中可以解析  lang = 'scss' 
-``` js
-  pluginOptions: {
-    'style-resources-loader': {
-      preProcessor: 'scss',
-      patterns: []
-    }
-  },
-```
-### 引入公共的 scss 文件
-``` js
-  css: {
-    loaderOptions: {
-      scss: {
-        additionalData: `@import "@/styles/main.scss";`,
-      },
-    },
-  },
+
+生产构建：
+
+```bash
+npm run build
 ```
 
-### 遇到的坑
-1. 没有服务器支持下使用历史路由模式导致刷新页面报404
-2. 原生的 form submit 没有阻止原始事件，导致多次提交，多次路由跳转
-3. element plus icon 部分功能需要全局注册才能正常使用
-4. mock 会拦截浏览器 http。如果mock配置正确，反而不会产生 http 请求
-5. axios全局注册目前看来没有节约多少代码量，不如将各种 api 放在一起管理
-6. 不能使用 debugger的问题在 package.json 里的 eslintConfig 配置 rules 即可解决
+默认开发端口：
 
-
-vue3 语法学习
-1. 在 setup 中定义 props, 以及取到 props的值，setup 一定要定义类型, toRef toRefs 会产生一个新的引用变量!
-```js
- import { defineProps,toRefs } from 'vue'
- <script lang="js" setup>
-    const props = defineProps({
-       dialogVisible: {
-         type: Boolean,
-         default: false,
-       },
-    });
-    const {dialogVisible} = toRefs(props)
-  </script>
-```
-2. emit 引入
-```js
-const emit = defineEmits(['update-value']);
-const updateValue = (val) => {
-   emit('update-value', val)
-}
-```
-3. 定义 let leftMenu = reactive([])，关于直接对 leftMenu 数组赋值时会让它本身失去响应式
-   解决办法
-方案1：创建一个响应式对象，对象的属性是数组
-```js
-const state = reactive({
-    arr: []
-});
-state.arr = [1, 2, 3]
-```
-方案2: 使用 ref 函数 
-```js
-const state = ref([])
-state.value = [1, 2, 3]
-```
-方案3: 使用数组的push方法
-```js
-const arr = reactive([])
-arr.push(...[1, 2, 3])
-```
-1. 将 proxy 数组对象转化为 可读数组
-```js
-const leftMenu = reactive({
-   leftMenuVal:[]
-})
-const target = Array.from(leftMenu.leftMenuVal);
+```text
+8010
 ```
 
+## 开发代理
 
-### 还没解决的问题
-1. 无
-   
+`vue.config.js` 中当前配置了代理：
 
+- `/api` -> `http://139.196.158.225:3000`
+- `/gitee` -> `https://gitee.com/`
 
+说明本项目开发环境默认依赖远程后端服务。
+
+## 当前项目特点总结
+
+从整体阅读结果来看，这个项目有几个比较明显的特征：
+
+- 它不是标准化企业后台模板，而是“个人平台 + 内容系统 + 互动作品”的混合形态
+- 博客系统、聊天室、扭蛋机、小游戏是当前最完整的几条功能线
+- 页面风格偏作品集与实验性，很多页面有明显的视觉设计和交互表达
+- 当前工程基础仍是 Vue CLI + webpack，适合继续维护，但如果后续强调开发效率，可以评估迁移到 Vite
+- 项目里有一定“成长型演进”痕迹，既有偏业务代码，也有偏学习/实验性质的模块
+
+## 后续建议
+
+如果后续要继续维护这个仓库，比较值得优先推进的方向是：
+
+1. 整理运行配置，把敏感配置迁出前端静态文件
+2. 为 README 补充后端依赖说明和接口清单
+3. 增加环境区分说明，例如本地、测试、线上分别如何配置
+4. 逐步补充核心模块的接口约定文档，尤其是博客、聊天、扭蛋机
+5. 评估从 Vue CLI/webpack 迁移到 Vite 的成本
+
+## 我这次对项目的理解结论
+
+这个仓库目前最适合被描述为：
+
+> 一个以个人主页为承载外壳，集成博客系统、用户体系、实时聊天、图床、地图、Three.js 场景和互动小游戏的 Vue 3 综合前端平台。
 
